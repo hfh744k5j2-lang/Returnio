@@ -28,3 +28,14 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 **Testováno:**
 - `npm run check` – OK (11 testů: oprávnění rolí, registrace firmy, pozvánky – správný e-mail, jednorázovost, hash tokenu, admin nemůže měnit uživatele jiné firmy, překlady).
 - Playwright `m1-auth.spec.ts` – OK: magic link z e-mailu → registrace firmy → pozvání skladníka → přijetí → skladník nevidí Import/Výkaz; nepřihlášený → /login.
+
+## M2 Oddělení dat – hotovo
+
+**Hotové:** REST API `/api/v1/*` (me, partners, packaging-types, movements + akce confirm/dispute/accept/counter/cancel, balances, audit) nad stejnými službami jako UI. Obal `api()` ověřuje přihlášení (401), u zápisů vyžaduje JSON a stejný `Origin` (CSRF), chyby převádí na 400/403/404/409. Neplatné parametry dotazu → 400. Služba auditní stopy (`listAudit`, `movementHistory`) vrací jen vlastní záznamy + záznamy partnerství, kde je firma stranou.
+
+**Testováno:**
+- `tests/unit/isolation.test.ts` (27 testů) – scénář A↔B, C↔D, A↔U (neregistrovaný). A nevidí a nemůže měnit partnery, typy, pohyby, saldo ani audit C/D; B nevidí A-ho jiné partnery; pohyb nejde zapsat do cizího partnerství ani s cizím typem obalu; jednorázový odkaz nejde zneužít na cizí typ; pokusy o změnu cizích dat nic nezmění (ověřeno v DB).
+- **Registr pokrytí:** test selže, pokud v `src/lib/services/*` přibude exportovaná funkce bez testu oddělení dat (nebo bez výslovné výjimky).
+- `tests/e2e/m2-isolation.spec.ts` (5 testů) – přes HTTP: seznamy neobsahují cizí ID/názvy/dodací listy, cizí ID → 404 u GET/PATCH/POST i akcí pohybu, nic se v DB nezmění; bez přihlášení 401; zápis bez JSON → 400, cizí Origin → 403.
+
+**Rozhodnutí:** cizí záznam = 404 (ne 403). Oddělení řešeno v dotazech (každý dotaz filtruje přes `companyId`/`partnershipScope`); Postgres RLS jsem nepřidával – zadání chce oddělení v dotazech a testech, RLS by komplikovalo Prisma/Supabase pooler.
