@@ -1,5 +1,5 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions";
 import { useT } from "@/lib/i18n/client";
 import { CorrectionForm } from "./CorrectionForm";
@@ -23,7 +23,8 @@ export function PartnerLinkActions({
 }) {
   const { t } = useT();
   const [state, formAction, pending] = useActionState(confirmAction, null);
-  const done = state?.ok && state.message;
+  const [disputeDone, setDisputeDone] = useState<string | null>(null);
+  const done = (state?.ok && state.message) || disputeDone;
   if (done) return <p className="alert-ok text-base" role="status">{done}</p>;
   return (
     <div className="space-y-5">
@@ -48,6 +49,7 @@ export function PartnerLinkActions({
             lines={lines}
             hiddenFields={{ token }}
             withName
+            onDone={setDisputeDone}
             submitLabel={mode === "confirm" ? t("movementDetail.disputeSubmit") : t("movementDetail.counterSubmit")}
           />
         </div>

@@ -16,12 +16,14 @@ test("M5: skladník na telefonu otevře QR partnera, přidá obal z QR a uloží
   await loginAs(context, sklad.id);
   await page.goto(`/scan?partner=${p.id}&type=${eur.id}`);
   await expect(page.getByTestId("scan-partner")).toHaveText("M5 Partner B");
+  await expect(page.getByRole("button", { name: "Zvolte výdej, příjem nebo vrácení" })).toBeDisabled();
+  await page.getByRole("button", { name: "Výdej", exact: true }).click();
   await page.getByRole("button", { name: "Přidat EUR paleta" }).click();
   await page.getByRole("button", { name: "Přidat EUR paleta" }).click();
   await page.getByLabel("Počet Plastová paleta H1").fill("12");
   await page.getByLabel("Číslo dodacího listu").fill("DL-M5");
   await shot(page, "05-skenovani-mobil");
-  await page.getByRole("button", { name: "Uložit Výdej: 14 ks" }).click();
+  await page.getByRole("button", { name: "Uložit výdej: 15 ks" }).click();
   await expect(page.getByText(/uložen\. Čeká na potvrzení partnerem/)).toBeVisible();
   await page.getByRole("link", { name: "Skenovat další" }).click();
   await expect(page).toHaveURL(/\/scan$/);
@@ -29,7 +31,7 @@ test("M5: skladník na telefonu otevře QR partnera, přidá obal z QR a uloží
   const m = await db.movement.findFirstOrThrow({ where: { partnershipId: p.id }, include: { lines: true } });
   expect(m.kind).toBe("ISSUE");
   expect(m.deliveryNote).toBe("DL-M5");
-  expect(m.lines.map((l) => l.quantity).sort((x, y) => x - y)).toEqual([2, 12]);
+  expect(m.lines.map((l) => l.quantity).sort((x, y) => x - y)).toEqual([3, 12]);
 });
 
 test("M5: QR cizího partnera se ignoruje", async ({ page, context }) => {
@@ -51,8 +53,9 @@ test("M5: partner bez registrace rozporuje přes odkaz, firma navrhne opravu, pa
   const p = await createPartnership(a.company.id, null, { name: "Bistro U", email: partnerEmail });
   await loginAs(context, a.user.id);
   await page.goto(`/scan?partner=${p.id}&type=${eur.id}`);
+  await page.getByRole("button", { name: "Výdej", exact: true }).click();
   await page.getByLabel("Počet EUR paleta").fill("10");
-  await page.getByRole("button", { name: "Uložit Výdej: 10 ks" }).click();
+  await page.getByRole("button", { name: "Uložit výdej: 10 ks" }).click();
   await expect(page.getByText("Partner dostal e-mail s odkazem na potvrzení.")).toBeVisible();
   const movementUrl = page.url().replace(/\?.*/, "");
 

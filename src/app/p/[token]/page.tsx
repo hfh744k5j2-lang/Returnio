@@ -2,6 +2,7 @@ import { findPartnerLink } from "@/lib/services/movements";
 import { getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/format";
 import { LangSwitch } from "@/components/LangSwitch";
+import { directionKey } from "@/lib/direction";
 import { PartnerLinkActions } from "@/components/PartnerLinkActions";
 import { acceptLink, confirmLink, counterLink, disputeLink } from "./actions";
 
@@ -31,9 +32,9 @@ export default async function PartnerLinkPage({ params }: { params: Promise<{ to
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <div><dt className="muted">{t("movements.number")}</dt><dd className="font-mono">{m.numberLabel}</dd></div>
             <div><dt className="muted">{t("common.date")}</dt><dd>{formatDate(m.date, locale)}</dd></div>
-            <div><dt className="muted">{t("movementForm.kind")}</dt><dd>{t(`kinds.${m.kind}`)}</dd></div>
-            <div><dt className="muted">{t("movementDetail.direction")}</dt><dd>{m.direction === "IN" ? t("partnerLink.toYou", { company: companyName ?? "" }) : t("partnerLink.fromYou", { company: companyName ?? "" })}</dd></div>
+            <div className="col-span-2"><dt className="muted">{t("movementDetail.direction")}</dt><dd className="font-semibold">{m.kind === "LOSS" || m.kind === "DAMAGE" || m.kind === "CORRECTION" ? `${t(`kinds.${m.kind}`)}: ${t(directionKey(m.kind, m.direction === "IN" ? "OUT" : "IN"))}` : m.direction === "IN" ? t("partnerLink.toYou", { company: companyName ?? "" }) : t("partnerLink.fromYou", { company: companyName ?? "" })}</dd></div>
             {m.deliveryNote && <div className="col-span-2"><dt className="muted">{t("movementForm.deliveryNote")}</dt><dd>{m.deliveryNote}</dd></div>}
+            {m.note && <div className="col-span-2"><dt className="muted">{t("partnerLink.note", { company: companyName ?? "" })}</dt><dd>{m.note}</dd></div>}
           </dl>
           <table className="table">
             <thead><tr><th>{t("packaging.type")}</th><th className="text-right">{resolveMode ? t("partnerLink.proposedNow") : t("movementDetail.proposed")}</th></tr></thead>

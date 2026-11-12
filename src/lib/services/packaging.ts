@@ -3,7 +3,7 @@ import { prisma } from "../db";
 import { audit } from "../audit";
 import type { Ctx } from "../context";
 import { assertCan } from "../permissions";
-import { conflict, notFound } from "../errors";
+import { conflict, invalid, notFound } from "../errors";
 import { parse } from "./validate";
 import { getPartnershipRaw } from "./partners";
 
@@ -97,7 +97,10 @@ export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) 
   // null = smazat hodnotu (kauce, materiál), undefined = beze změny
   const merged: Record<string, unknown> = { ...current };
   for (const [k, v] of Object.entries((input ?? {}) as Record<string, unknown>)) {
-    if (v === null) delete merged[k];
+    if (v === null) {
+      if (k !== "material" && k !== "deposit") throw invalid(`Pole ${k} nelze smazat.`);
+      delete merged[k];
+    }
     else if (v !== undefined) merged[k] = v;
   }
   const data = parse(packagingSchema, merged);

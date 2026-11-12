@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { ActionState } from "@/lib/actions";
 import { useT } from "@/lib/i18n/client";
 
@@ -13,6 +13,7 @@ export function CorrectionForm({
   submitLabel,
   hiddenFields,
   withName,
+  onDone,
 }: {
   action: (p: ActionState, fd: FormData) => Promise<ActionState>;
   movementId?: string;
@@ -20,11 +21,15 @@ export function CorrectionForm({
   submitLabel: string;
   hiddenFields?: Record<string, string>;
   withName?: boolean;
+  onDone?: (message: string) => void;
 }) {
   const { t } = useT();
   const [state, formAction, pending] = useActionState(action, null);
   const [qty, setQty] = useState<Record<string, string>>(Object.fromEntries(lines.map((l) => [l.packagingTypeId, String(l.current)])));
   const [reason, setReason] = useState("");
+  useEffect(() => {
+    if (state?.ok && state.message) onDone?.(state.message);
+  }, [state, onDone]);
   if (state?.ok && state.message) return <p className="alert-ok text-base" role="status">{state.message}</p>;
   const payload = JSON.stringify({
     reason,

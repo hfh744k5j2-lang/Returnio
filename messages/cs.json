@@ -307,7 +307,9 @@
     "waitingPartnerEmail": "Partner dostal e-mail s odkazem na potvrzení.",
     "cancel": "Zrušit pohyb (zapsán omylem)",
     "history": "Historie",
-    "officeConfirms": "Ztrátu, poškození a úpravu salda potvrzuje logistik nebo admin vaší firmy."
+    "officeConfirms": "Ztrátu, poškození a úpravu salda potvrzuje logistik nebo admin vaší firmy.",
+    "resendLink": "Poslat partnerovi odkaz znovu",
+    "linkResent": "Nový odkaz odeslán. Starý přestal platit."
   },
   "correction": {
     "wasProposed": "navrženo {n} ks",
@@ -331,7 +333,14 @@
     "proposedNow": "Navrženo",
     "theirReason": "Důvod",
     "nothingToDo": "U tohoto pohybu teď není potřeba nic dělat.",
-    "registerHint": "Chcete vidět saldo a všechny pohyby? Registrace v ObalBooku je pro partnery zdarma – použijte odkaz z pozvánky."
+    "registerHint": "Chcete vidět saldo a všechny pohyby? Registrace v ObalBooku je pro partnery zdarma – použijte odkaz z pozvánky.",
+    "note": "Poznámka od {company}",
+    "done": {
+      "confirm": "Děkujeme, pohyb je potvrzen.",
+      "dispute": "Rozpor jsme odeslali. Partner se vám ozve.",
+      "accept": "Děkujeme, oprava je přijata a pohyb potvrzen.",
+      "counter": "Váš návrh jsme odeslali."
+    }
   },
   "audit": {
     "actions": {
@@ -341,8 +350,48 @@
         "disputed": "rozporováno",
         "counter_proposed": "navržena jiná oprava",
         "dispute_resolved": "rozpor vyřešen dohodou",
-        "cancelled": "zrušeno"
+        "cancelled": "zrušeno",
+        "link_resent": "odkaz partnerovi znovu odeslán"
+      },
+      "company": {
+        "created": "firma zaregistrována",
+        "updated": "údaje firmy změněny"
+      },
+      "import": {
+        "completed": "import CSV"
+      },
+      "packaging": {
+        "created": "typ obalu přidán",
+        "updated": "typ obalu změněn"
+      },
+      "partner": {
+        "accepted": "partner přijal pozvánku",
+        "invite_resent": "pozvánka partnerovi znovu odeslána",
+        "invited": "partner pozván",
+        "updated": "partner upraven"
+      },
+      "user": {
+        "invitation_revoked": "pozvánka zrušena",
+        "invited": "kolega pozván",
+        "joined": "kolega se přidal",
+        "removed": "uživatel odebrán",
+        "role_changed": "role změněna"
       }
+    },
+    "title": "Historie změn",
+    "intro": "Každá změna je zapsaná s uživatelem a časem. Nic se nemaže – chyby se opravují novým záznamem.",
+    "when": "Kdy",
+    "who": "Kdo",
+    "what": "Co",
+    "detail": "Podrobnosti",
+    "types": {
+      "Movement": "Pohyby",
+      "Partnership": "Partneři",
+      "PackagingType": "Obaly",
+      "Company": "Firma",
+      "User": "Uživatelé",
+      "Invitation": "Pozvánky",
+      "ImportBatch": "Importy"
     }
   },
   "scan": {
@@ -363,6 +412,74 @@
     "cameraError": "Kameru se nepodařilo zapnout. Povolte přístup ke kameře v prohlížeči, nebo vyberte ze seznamu.",
     "unknownCode": "Tento QR kód nepatří ObalBooku.",
     "unknownPartner": "Tento QR kód patří partnerovi, kterého vaše firma nemá.",
-    "typeNotForPartner": "Tento obal nepatří vám ani vybranému partnerovi."
+    "typeNotForPartner": "Tento obal nepatří vám ani vybranému partnerovi.",
+    "chooseKind": "Zvolte výdej, příjem nebo vrácení",
+    "samePartner": "Tento partner už je vybraný. Teď naskenujte QR obalu.",
+    "partnerQrInItems": "Toto je QR jiného partnera. Naskenujte QR obalu. Chcete-li změnit partnera, klepněte nahoře na „Změnit“.",
+    "loadingTypes": "Načítám obaly…",
+    "typesError": "Obaly se nepodařilo načíst. Zkontrolujte připojení.",
+    "retry": "Zkusit znovu",
+    "noTypes": "Vaše firma ani partner nemají žádné obaly. Požádejte kancelář, ať je přidá.",
+    "cameraNeedsHttps": "Kamera v prohlížeči funguje jen přes zabezpečené připojení (https). Vyberte ze seznamu, nebo otevřete QR fotoaparátem telefonu."
+  },
+  "import": {
+    "title": "Import pohybů z CSV",
+    "intro": "Nahrajte export z ERP nebo Excelu. Sloupce přiřadíte k polím ObalBooku, soubor zkontrolujeme a pohyby vzniknou jako „čeká na potvrzení“ – partner je potvrdí jako ruční zápisy.",
+    "stepFile": "Soubor",
+    "file": "CSV soubor",
+    "fileHelp": "CSV oddělené středníkem nebo čárkou, s hlavičkou. Kódování UTF-8 nebo Windows-1250. Max. 5 000 řádků / 3 MB.",
+    "sample": "Stáhnout vzorový soubor",
+    "tooBig": "Soubor je příliš velký (max. 3 MB).",
+    "stepMapping": "Přiřazení sloupců",
+    "rowsFound": "V souboru je {n} řádků.",
+    "fields": {
+      "date": "Datum",
+      "partner": "Partner (kód, název nebo e-mail)",
+      "kind": "Druh pohybu",
+      "packaging": "Kód obalu",
+      "quantity": "Počet kusů",
+      "deliveryNote": "Dodací list",
+      "direction": "Směr (jen u vrácení, ztráty, poškození, úpravy)",
+      "note": "Poznámka"
+    },
+    "notMapped": "– nepoužít –",
+    "mappingHelp": "Řádky se stejným partnerem, dnem, druhem a dodacím listem spojíme do jednoho pohybu. Druh: výdej, příjem, vrácení, ztráta, poškození, oprava. Směr: „k nám“ nebo „od nás“.",
+    "check": "Zkontrolovat soubor",
+    "stepPreview": "Kontrola",
+    "ready": "Bez chyb: {rows} řádků → {movements} pohybů.",
+    "run": "Importovat {n} pohybů",
+    "hasErrors": "Soubor obsahuje {n} chyb. Opravte je a nahrajte soubor znovu – importuje se vše, nebo nic.",
+    "row": "Řádek {n}",
+    "done": "Importováno {n} pohybů. Čekají na potvrzení partnery.",
+    "showMovements": "Zobrazit",
+    "working": "Pracuji…"
+  },
+  "ppwr": {
+    "title": "Výkaz PPWR – podíl vratných obalů",
+    "warningTitle": "Orientační výpočet – nejde o oficiální výkaz",
+    "warningText": "Nařízení EU o obalech (PPWR, čl. 29–31) ukládá od 1. 1. 2030 cíle pro vratné přepravní obaly. Evropská komise zatím nevydala metodiku výpočtu (má ji vydat do 30. 6. 2027). Čísla níže jsou odhad podle zjednodušené metodiky ObalBooku a po vydání metodiky se mohou změnit.",
+    "calculate": "Spočítat",
+    "lastYear": "Rok {year}",
+    "invalidPeriod": "Neplatné období – začátek musí být před koncem.",
+    "sharePieces": "Podíl vratných (kusy)",
+    "shareWeight": "Podíl vratných (hmotnost)",
+    "ofPieces": "{a} z {b} ks",
+    "ofKg": "{a} z {b} kg",
+    "totalIssued": "Vydáno obalů celkem",
+    "pending": "Nepotvrzené výdeje",
+    "pendingHelp": "nejsou ve výpočtu",
+    "byType": "Podle typu obalu",
+    "empty": "V období nejsou žádné potvrzené výdeje.",
+    "issued": "Vydáno (ks)",
+    "weight": "Hmotnost (kg)",
+    "avgPool": "Průměrně u partnerů (ks)",
+    "rotations": "Obrátky",
+    "methodTitle": "Jak počítáme",
+    "method1": "Započítáváme potvrzené výdeje vaší firmy partnerům s datem v období (vratné i nevratné obaly).",
+    "method2": "Podíl vratných = vratné / všechny obaly, zvlášť v kusech a v kilogramech. Hmotnost a vratnost bereme ze stavu typu v okamžiku zápisu pohybu.",
+    "method3": "Obrátky = vydané kusy v období / průměrný počet kusů u partnerů (kladné potvrzené saldo, průměr ze začátku a konce období).",
+    "method4": "Nepotvrzené a rozporované pohyby nezapočítáváme.",
+    "methodVersion": "Verze metodiky: {v}",
+    "exportCsv": "Export výkazu (CSV)"
   }
 }

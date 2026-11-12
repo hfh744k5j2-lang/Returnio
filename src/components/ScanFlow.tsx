@@ -29,9 +29,12 @@ export function ScanFlow({
   const { t } = useT();
   const [state, formAction, pending] = useActionState(action, null);
   const [partnerId, setPartnerId] = useState(initialPartnerId ?? "");
-  const [kind, setKind] = useState<Kind>("ISSUE");
+  // bez výchozí volby – skladník musí vědomě zvolit výdej / příjem / vrácení
+  const [kind, setKind] = useState<Kind | null>(null);
   const [returnDir, setReturnDir] = useState<"IN" | "OUT">("IN");
   const [types, setTypes] = useState<PType[]>([]);
+  const [typesState, setTypesState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [reload, setReload] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [pendingType, setPendingType] = useState<string | undefined>(initialTypeId);
   const [scanning, setScanning] = useState(false);
@@ -40,23 +43,42 @@ export function ScanFlow({
   const [clientKey] = useState(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random())));
 
   useEffect(() => {
-    if (!partnerId) return setTypes([]);
+    if (!partnerId) {
+      setTypes([]);
+      setTypesState("idle");
+      return;
+    }
     let cancelled = false;
+    setTypesState("loading");
     fetch(`/api/v1/partners/${partnerId}`)
-      .then((r) => (r.ok ? r.json() : { packagingTypes: [] }))
-      .then((d) => !cancelled && setTypes(d.packagingTypes ?? []));
+      .then(async (r) => {
+        if (r.status === 401) {
+          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          return;
+        }
+        if (!r.ok) throw new Error(String(r.status));
+        const d = await r.json();
+        if (!cancelled) {
+          setTypes(d.packagingTypes ?? []);
+          setTypesState("ok");
+        }
+      })
+      .catch(() => !cancelled && setTypesState("error"));
     return () => {
       cancelled = true;
     };
-  }, [partnerId]);
+  }, [partnerId, reload]);
 
   // obal naskenovaný dřív než partner – přidáme ho, jakmile známe typy partnera
   useEffect(() => {
-    if (!pendingType || types.length === 0) return;
-    if (types.some((x) => x.id === pendingType)) setCounts((c) => ({ ...c, [pendingType]: c[pendingType] ?? 0 }));
+    if (!pendingType || typesState !== "ok") return;
+    if (types.some((x) => x.id === pendingType)) {
+      setCounts((c) => ({ ...c, [pendingType]: Math.max(1, c[pendingType] ?? 0) }));
+      setTimeout(() => document.getElementById(`s-q-${pendingType}`)?.focus(), 50);
+    }
     else setNotice(t("scan.typeNotForPartner"));
     setPendingType(undefined);
-  }, [pendingType, types, t]);
+  }, [pendingType, types, typesState, t]);
 
   const onScan = useCallback(
     (text: string) => {
@@ -65,12 +87,14 @@ export function ScanFlow({
       if (!r) return setNotice(t("scan.unknownCode"));
       setNotice(null);
       if (r.partner) {
+        // v kroku obalů QR partnera nepřepne – skladník by omylem vydal jinému partnerovi
+        if (partnerId) return setNotice(r.partner === partnerId ? t("scan.samePartner") : t("scan.partnerQrInItems"));
         if (partners.some((p) => p.id === r.partner)) setPartnerId(r.partner);
         else setNotice(t("scan.unknownPartner"));
       }
       if (r.type) setPendingType(r.type);
     },
-    [partners, t],
+    [partners, partnerId, t],
   );
 
   const partner = partners.find((p) => p.id === partnerId);
@@ -99,7 +123,7 @@ export function ScanFlow({
               <div className="text-lg font-bold" data-testid="scan-partner">{partner.name}</div>
               <div className="font-mono text-sm text-slate-600">{partner.code}</div>
             </div>
-            <button className="btn-secondary btn-sm" type="button" onClick={() => { setPartnerId(""); setCounts({}); }}>{t("scan.change")}</button>
+            <button className="btn-secondary" type="button" onClick={() => { setPartnerId(""); setCounts({}); }}>{t("scan.change")}</button>
           </div>
         ) : (
           <>
@@ -129,7 +153,7 @@ export function ScanFlow({
               </button>
             ))}
           </div>
-          <p className="muted">{t(`movementForm.kindHelp.${kind}`)}</p>
+          <p className="muted">{kind ? t(`movementForm.kindHelp.${kind}`) : t("scan.chooseKind")}</p>
           {kind === "RETURN" && (
             <div className="grid gap-2">
               {(["IN", "OUT"] as const).map((d) => (
@@ -146,6 +170,14 @@ export function ScanFlow({
         <section className="card space-y-3">
           <h2 className="h2">3. {t("scan.stepItems")}</h2>
           <button type="button" className="btn-secondary w-full py-4 text-base" onClick={() => setScanning(true)}>📷 {t("scan.scanType")}</button>
+          {typesState === "loading" && <p className="muted">{t("scan.loadingTypes")}</p>}
+          {typesState === "error" && (
+            <div className="alert-error flex items-center justify-between gap-2">
+              <span>{t("scan.typesError")}</span>
+              <button type="button" className="btn-secondary" onClick={() => setReload((x) => x + 1)}>{t("scan.retry")}</button>
+            </div>
+          )}
+          {typesState === "ok" && types.length === 0 && <p className="alert-warn">{t("scan.noTypes")}</p>}
           <ul className="space-y-2">
             {types.map((ty) => {
               const q = counts[ty.id];
@@ -189,8 +221,14 @@ export function ScanFlow({
           <input type="hidden" name="payload" value={payload} />
           <input type="hidden" name="returnTo" value="scan" />
           {state?.error && <p className="alert-error mb-2">{state.error}</p>}
-          <button className="btn-primary w-full py-4 text-lg" disabled={pending || lines.length === 0}>
-            {pending ? t("movementForm.saving") : lines.length === 0 ? t("scan.enterCounts") : t("scan.save", { kind: t(`kinds.${kind}`), n: total })}
+          <button className="btn-primary w-full py-4 text-lg" disabled={pending || lines.length === 0 || !kind}>
+            {pending
+              ? t("movementForm.saving")
+              : !kind
+                ? t("scan.chooseKind")
+                : lines.length === 0
+                  ? t("scan.enterCounts")
+                  : t("scan.save", { kind: t(`kinds.${kind}`).toLowerCase(), n: total })}
           </button>
         </form>
       )}

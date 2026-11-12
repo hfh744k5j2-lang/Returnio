@@ -11,6 +11,7 @@ import {
   counterCorrection,
   createMovement,
   disputeMovement,
+  resendPartnerLink,
 } from "@/lib/services/movements";
 
 function jsonField(fd: FormData, name: string): unknown {
@@ -56,6 +57,11 @@ export async function cancel(_p: ActionState, fd: FormData): Promise<ActionState
 export async function accept(_p: ActionState, fd: FormData): Promise<ActionState> {
   const ctx = await requireCtx();
   return act(fd, (id) => acceptCorrection(ctx, id));
+}
+
+export async function resendLink(_p: ActionState, fd: FormData): Promise<ActionState> {
+  const ctx = await requireCtx();
+  return act(fd, (id) => resendPartnerLink(ctx, id));
 }
 
 export async function dispute(_p: ActionState, fd: FormData): Promise<ActionState> {

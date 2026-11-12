@@ -115,3 +115,30 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 **Testováno:** `npm run check` OK (65 unit testů, mj. parser QR). Playwright (projekt „mobile“, Pixel 7) `m5-mobile.spec.ts`: QR odkaz bez přihlášení → login s návratem → partner z QR, obal z QR, +/−, počet, uložení výdeje (ověřeno v DB) → „Skenovat další“; QR cizího partnera se ignoruje; neregistrovaný partner rozporuje přes odkaz → odkaz pak neplatí → firma navrhne 9 → e-mail ukazuje 9 ks → partner přijme novým odkazem → potvrzeno s 9 ks. Celá e2e sada (M1–M5, 15 testů) prošla – po opravě selektoru v m4 testu (nový popisek „Poznámka (uvidí i partner)“ kolidoval s „Partner“; zachyceno až po commitu M5, opraveno v následujícím commitu).
 
 **Rozhodnutí:** QR čtečka v prohlížeči přes `jsQR` (žádná nativní aplikace, žádná externí služba). Kameru nelze v CI testovat – testuje se tok přes URL z QR a parser zvlášť. Skladník má na skenování jen výdej/příjem/vrácení s dnešním datem (ostatní ve formuláři Nový pohyb).
+
+**Revize M5 (sub-agent) – 18 bodů, kritické žádné; opraveny závažné:**
+- Pohyb u neregistrovaného partnera se mohl zaseknout (neodeslaný/smazaný/vypršelý odkaz) → tlačítko „Poslat partnerovi odkaz znovu“ (admin/logistik, staré odkazy zneplatní); cron jednou připomene s novým odkazem; po změně e-mailu partnera dostanou čekající pohyby nové odkazy.
+- QR partnera v kroku obalů tiše přepnul partnera → odmítnuto s vysvětlením.
+- Nenačtené typy vypadaly jako prázdný seznam → stav načítání, chyba s „Zkusit znovu“, 401 → přihlášení s návratem, vysvětlení prázdného seznamu.
+- Předvybraný výdej (riziko obráceného salda) → bez výchozí volby, tlačítko Uložit je neaktivní, dokud skladník nezvolí výdej/příjem/vrácení.
+- Poznámka se neukazovala partnerovi bez registrace → na stránce odkazu i v e-mailu.
+- Drobné opraveny: po rozporu přes odkaz zmizí i tlačítko Potvrdit; kamera se vypne i při zavření před povolením; hláška o nutnosti HTTPS; zmenšený obraz pro dekódování; naskenovaný obal dostane 1 ks a zaměří pole; tlačítka min. 44 px; směr z pohledu partnera; poděkování podle jazyka; `reusable: null` v PATCH → 400.
+- Rozhodnutí: migrace `…per_partnership_numbering…` byla upravena na místě – nikde nebyla nasazena (jen lokální prázdné DB, vývojová DB znovu vytvořena).
+- Do dluhu: rate limit veřejných akcí `/p/[token]` (spolu s magic linkem); vyřazené typy ve skenování nejsou označené (server výdej odmítne srozumitelně).
+
+## M6 Import/export CSV, výkaz PPWR, upozornění, auditní stopa – hotovo
+
+**Hotové:**
+- **Import CSV** (`/import`, admin/logistik): průvodce – soubor (UTF-8 i Windows-1250, `;` i `,`) → mapování sloupců s automatickým odhadem (cz/en/pl názvy) → kontrola s chybami po řádcích → import „vše, nebo nic“ v jedné transakci. Řádky se stejným partnerem/dnem/druhem/směrem/DL = jeden pohyb. Partner podle kódu, názvu nebo e-mailu; kód obalu přednostně vlastní typ. Importované pohyby jsou „čeká na potvrzení“; neregistrovaní partneři dostanou odkazy. Vzorový soubor `/import-vzor.csv`. Max. 5 000 řádků / 3 MB.
+- **Export CSV** salda, pohybů (dle filtrů) a výkazu PPWR – středník, UTF-8 BOM (český Excel), ochrana proti CSV injection.
+- **Výkaz PPWR** (`/reports/ppwr`): podíl vratných obalů v kusech i kg, obrátky podle typu, nepotvrzené výdeje zvlášť; výrazné upozornění „orientační výpočet“ (metodika EU do 30. 6. 2027). Celý výpočet v jednom modulu `src/lib/ppwr.ts` (čistá funkce + verze metodiky), data dodává `services/reports.ts`.
+- **Upozornění e-mailem** (`runNotifications`, `/api/cron/notifications` s `CRON_SECRET`, Vercel Cron 1× denně, `npm run notify`): nepotvrzený/nevyřešený pohyb starší 3 dnů (souhrnný e-mail straně, která má jednat, každý pohyb jen jednou; neregistrovanému partnerovi nový odkaz), saldo nad limitem firmy (max. 1× týdně za partnera). Nový rozpor se oznamuje okamžitě (od M4). Deduplikace přes `NotificationLog`.
+- **Auditní stopa** (`/audit`, admin/logistik): všechny změny s uživatelem a časem, filtr podle typu, odkaz na pohyb; v detailu pohybu historie pro všechny. Nic se nemaže.
+- Zámek řádku partnerství (`FOR UPDATE`) při číslování – souběh importu a ručního zápisu se serializuje.
+- Bezpečnostní hlavičky (nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy).
+
+**Testováno:** `npm run check` OK (76 unit testů). Nové: `isolation-m6.test.ts` (exporty, výkaz, import a upozornění nikdy nezahrnou data cizích firem; import nenajde cizího partnera a kód obalu páruje na vlastní typ; upozornění jdou jen dotčeným firmám a neopakují se; cizí pohyb nejde znovu poslat), `ppwr.test.ts` (podíly, obrátky, prázdné období). Playwright `m6-import-report.spec.ts`: import s chybou → hláška u řádku → opravený soubor → 2 pohyby; výkaz PPWR (60,0 % ks, 97,4 % kg), stažení CSV výkazu/pohybů/salda (BOM, karton bez salda), historie změn, skladník nemá přístup (UI i API 403), cron bez klíče 401. Celkem 18 e2e testů OK.
+
+**Rozhodnutí:**
+- Výkaz počítá potvrzené výdeje firmy (vratné i nevratné); obrátky = vydané kusy / průměrný oběh u partnerů. Cíle PPWR v procentech záměrně neuvádím – metodika ani přesné výpočty nejsou vydané.
+- Import vytváří jen navržené pohyby (partner je musí potvrdit) – import z vlastního ERP nesmí měnit sdílené saldo bez druhé strany.

@@ -292,7 +292,12 @@ export async function updatePartner(ctx: Ctx, id: string, input: unknown) {
       data: { side, ...data, ...(emailChange ? { previousEmail: p.invitedEmail } : {}) },
     });
   });
-  if (emailChange) await resendPartnerInvite(ctx, p.id);
+  if (emailChange) {
+    await resendPartnerInvite(ctx, p.id);
+    // čekající pohyby dostanou nové odkazy na nový e-mail
+    const { resendAllPartnerLinks } = await import("./movements");
+    await resendAllPartnerLinks(p.id);
+  }
 }
 
 /** Opětovné odeslání pozvánky (nový odkaz, starý přestane platit). */

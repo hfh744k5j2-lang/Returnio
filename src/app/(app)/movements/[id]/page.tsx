@@ -9,7 +9,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { directionKey } from "@/lib/direction";
 import { ActionForm } from "@/components/ActionForm";
 import { CorrectionForm } from "@/components/CorrectionForm";
-import { accept, cancel, confirm, counter, dispute } from "../actions";
+import { accept, cancel, confirm, counter, dispute, resendLink } from "../actions";
+import { can } from "@/lib/permissions";
 
 export default async function MovementDetail({
   params,
@@ -35,7 +36,7 @@ export default async function MovementDetail({
       {sp.created && (
         <div className="alert-ok flex flex-wrap items-center justify-between gap-2" role="status">
           <span>{t("movementDetail.created", { number: m.numberLabel })}</span>
-          {sp.from === "scan" && <Link className="btn-primary btn-sm" href="/scan">{t("movementDetail.scanNext")}</Link>}
+          {sp.from === "scan" && <Link className="btn-primary" href="/scan">{t("movementDetail.scanNext")}</Link>}
         </div>
       )}
       <Link href="/movements" className="text-sm text-brand-700 underline">← {t("movements.title")}</Link>
@@ -137,6 +138,13 @@ export default async function MovementDetail({
       {m.status === "PROPOSED" && m.iAmCreator && (
         <p className="alert-warn">{m.partnerRegistered ? t("movementDetail.waitingPartner") : t("movementDetail.waitingPartnerEmail")}</p>
       )}
+      {!m.partnerRegistered && can(ctx.role, "disputes.resolve") &&
+        ((m.status === "PROPOSED" && m.iAmCreator) || (m.status === "DISPUTED" && open?.byMe)) && (
+          <ActionForm action={resendLink} successMessage={t("movementDetail.linkResent")}>
+            <input type="hidden" name="id" value={m.id} />
+            <button className="btn-secondary">{t("movementDetail.resendLink")}</button>
+          </ActionForm>
+        )}
 
       {m.can.cancel && (
         <ActionForm action={cancel}>

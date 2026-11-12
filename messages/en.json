@@ -307,7 +307,9 @@
     "waitingPartnerEmail": "The partner received an email with a confirmation link.",
     "cancel": "Cancel movement (recorded by mistake)",
     "history": "History",
-    "officeConfirms": "Losses, damage and balance adjustments are confirmed by your logistics user or admin."
+    "officeConfirms": "Losses, damage and balance adjustments are confirmed by your logistics user or admin.",
+    "resendLink": "Resend link to partner",
+    "linkResent": "New link sent. The old one is no longer valid."
   },
   "correction": {
     "wasProposed": "proposed {n} pcs",
@@ -331,7 +333,14 @@
     "proposedNow": "Proposed",
     "theirReason": "Reason",
     "nothingToDo": "Nothing needs to be done for this movement now.",
-    "registerHint": "Want to see the balance and all movements? Registration is free for partners – use the link from the invitation."
+    "registerHint": "Want to see the balance and all movements? Registration is free for partners – use the link from the invitation.",
+    "note": "Note from {company}",
+    "done": {
+      "confirm": "Thank you, the movement is confirmed.",
+      "dispute": "The dispute has been sent. The partner will get back to you.",
+      "accept": "Thank you, the correction is accepted and the movement confirmed.",
+      "counter": "Your proposal has been sent."
+    }
   },
   "audit": {
     "actions": {
@@ -341,8 +350,48 @@
         "disputed": "disputed",
         "counter_proposed": "counter-proposal",
         "dispute_resolved": "dispute resolved by agreement",
-        "cancelled": "cancelled"
+        "cancelled": "cancelled",
+        "link_resent": "link resent to partner"
+      },
+      "company": {
+        "created": "company registered",
+        "updated": "company details changed"
+      },
+      "import": {
+        "completed": "CSV import"
+      },
+      "packaging": {
+        "created": "packaging type added",
+        "updated": "packaging type changed"
+      },
+      "partner": {
+        "accepted": "partner accepted invitation",
+        "invite_resent": "partner invitation resent",
+        "invited": "partner invited",
+        "updated": "partner updated"
+      },
+      "user": {
+        "invitation_revoked": "invitation revoked",
+        "invited": "colleague invited",
+        "joined": "colleague joined",
+        "removed": "user removed",
+        "role_changed": "role changed"
       }
+    },
+    "title": "Change history",
+    "intro": "Every change is recorded with user and time. Nothing is deleted – mistakes are corrected with a new record.",
+    "when": "When",
+    "who": "Who",
+    "what": "What",
+    "detail": "Details",
+    "types": {
+      "Movement": "Movements",
+      "Partnership": "Partners",
+      "PackagingType": "Packaging",
+      "Company": "Company",
+      "User": "Users",
+      "Invitation": "Invitations",
+      "ImportBatch": "Imports"
     }
   },
   "scan": {
@@ -363,6 +412,74 @@
     "cameraError": "Could not start the camera. Allow camera access in your browser or choose from the list.",
     "unknownCode": "This QR code is not an ObalBook code.",
     "unknownPartner": "This QR code belongs to a partner your company does not have.",
-    "typeNotForPartner": "This packaging belongs neither to you nor to the selected partner."
+    "typeNotForPartner": "This packaging belongs neither to you nor to the selected partner.",
+    "chooseKind": "Choose issue, receipt or return",
+    "samePartner": "This partner is already selected. Now scan a packaging QR code.",
+    "partnerQrInItems": "This is another partner's QR. Scan a packaging QR. To change the partner, tap “Change” at the top.",
+    "loadingTypes": "Loading packaging…",
+    "typesError": "Could not load packaging. Check your connection.",
+    "retry": "Try again",
+    "noTypes": "Neither your company nor the partner has any packaging. Ask the office to add it.",
+    "cameraNeedsHttps": "The camera only works over a secure connection (https). Choose from the list or open the QR with your phone camera."
+  },
+  "import": {
+    "title": "Import movements from CSV",
+    "intro": "Upload an export from your ERP or Excel. Map the columns to ObalBook fields, we check the file, and the movements are created as “awaiting confirmation” – the partner confirms them like manual entries.",
+    "stepFile": "File",
+    "file": "CSV file",
+    "fileHelp": "CSV separated by semicolon or comma, with a header row. UTF-8 or Windows-1250. Max. 5,000 rows / 3 MB.",
+    "sample": "Download sample file",
+    "tooBig": "The file is too large (max. 3 MB).",
+    "stepMapping": "Column mapping",
+    "rowsFound": "The file has {n} rows.",
+    "fields": {
+      "date": "Date",
+      "partner": "Partner (code, name or email)",
+      "kind": "Movement kind",
+      "packaging": "Packaging code",
+      "quantity": "Quantity",
+      "deliveryNote": "Delivery note",
+      "direction": "Direction (only for return, loss, damage, adjustment)",
+      "note": "Note"
+    },
+    "notMapped": "– not used –",
+    "mappingHelp": "Rows with the same partner, day, kind and delivery note are merged into one movement. Kind: issue, receipt, return, loss, damage, correction. Direction: “in” or “out”.",
+    "check": "Check file",
+    "stepPreview": "Check",
+    "ready": "No errors: {rows} rows → {movements} movements.",
+    "run": "Import {n} movements",
+    "hasErrors": "The file contains {n} errors. Fix them and upload again – everything is imported or nothing.",
+    "row": "Row {n}",
+    "done": "Imported {n} movements. They are waiting for partner confirmation.",
+    "showMovements": "Show",
+    "working": "Working…"
+  },
+  "ppwr": {
+    "title": "PPWR report – share of reusable packaging",
+    "warningTitle": "Indicative calculation – not an official report",
+    "warningText": "The EU Packaging Regulation (PPWR, Art. 29–31) sets targets for reusable transport packaging from 1 Jan 2030. The European Commission has not yet published the calculation methodology (due by 30 Jun 2027). The figures below are estimates using ObalBook's simplified method and may change once the methodology is published.",
+    "calculate": "Calculate",
+    "lastYear": "Year {year}",
+    "invalidPeriod": "Invalid period – the start must be before the end.",
+    "sharePieces": "Reusable share (pieces)",
+    "shareWeight": "Reusable share (weight)",
+    "ofPieces": "{a} of {b} pcs",
+    "ofKg": "{a} of {b} kg",
+    "totalIssued": "Total packaging issued",
+    "pending": "Unconfirmed issues",
+    "pendingHelp": "not included",
+    "byType": "By packaging type",
+    "empty": "No confirmed issues in this period.",
+    "issued": "Issued (pcs)",
+    "weight": "Weight (kg)",
+    "avgPool": "Average at partners (pcs)",
+    "rotations": "Rotations",
+    "methodTitle": "How we calculate",
+    "method1": "We count your company's confirmed issues to partners dated within the period (reusable and one-way packaging).",
+    "method2": "Reusable share = reusable / all packaging, separately in pieces and kilograms. Weight and reusability are taken as they were when the movement was recorded.",
+    "method3": "Rotations = pieces issued in the period / average pieces at partners (positive confirmed balance, average of start and end of the period).",
+    "method4": "Unconfirmed and disputed movements are not counted.",
+    "methodVersion": "Method version: {v}",
+    "exportCsv": "Export report (CSV)"
   }
 }

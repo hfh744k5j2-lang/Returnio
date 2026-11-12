@@ -139,7 +139,9 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
   const run = async (tx: Tx) => {
-    // číslo v rámci partnerství; souběh řeší unikátní index + opakování níže
+    // číslo v rámci partnerství: zámek řádku partnerství serializuje souběžné zápisy (ruční i import);
+    // pro jistotu ještě unikátní index + opakování níže
+    await tx.$queryRaw`SELECT "id" FROM "Partnership" WHERE "id" = ${p.id} FOR UPDATE`;
     const last = await tx.movement.aggregate({ where: { partnershipId: p.id }, _max: { number: true } });
     const m = await tx.movement.create({
       data: {
@@ -206,6 +208,45 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   return m;
 }
 
+/**
+ * Znovu poslat jednorázový odkaz neregistrovanému partnerovi (staré odkazy k pohybu přestanou platit).
+ * Jen pro pohyb, kde je na tahu partner (navržený námi, nebo rozpor s naším návrhem opravy).
+ */
+export async function resendPartnerLink(ctx: Ctx, id: string) {
+  assertCan(ctx.role, "disputes.resolve");
+  const m = await loadScoped(ctx, id);
+  const open = m.corrections.find((c) => c.status === "OPEN");
+  const partnerTurn = (m.status === "PROPOSED" && m.createdBySide === "A") || (m.status === "DISPUTED" && open?.proposedBySide === "A");
+  if (m.partnership.companyBId || !partnerTurn) throw invalid("Odkaz teď nelze poslat – partner je registrovaný, nebo na tahu není.");
+  await prisma.partnerLinkToken.updateMany({ where: { movementId: m.id, usedAt: null }, data: { expiresAt: new Date() } });
+  await audit(prisma, {
+    actor: { userId: ctx.userId },
+    companyId: ctx.companyId,
+    partnershipId: m.partnershipId,
+    action: "movement.link_resent",
+    entityType: "Movement",
+    entityId: m.id,
+  });
+  await sendPartnerLink(m.id);
+}
+
+/** Pohyby, u kterých čeká neregistrovaný partner – po změně jeho e-mailu jim pošleme nové odkazy. */
+export async function resendAllPartnerLinks(partnershipId: string) {
+  const waiting = await prisma.movement.findMany({
+    where: {
+      partnershipId,
+      partnership: { companyBId: null },
+      OR: [
+        { status: "PROPOSED", createdBySide: "A" },
+        { status: "DISPUTED", corrections: { some: { status: "OPEN", proposedBySide: "A" } } },
+      ],
+    },
+    select: { id: true },
+  });
+  for (const w of waiting) await safely(() => sendPartnerLink(w.id));
+  return waiting.length;
+}
+
 /** Vytvoří jednorázový odkaz pro neregistrovaného partnera a pošle ho e-mailem. */
 export async function sendPartnerLink(movementId: string) {
   const m = await prisma.movement.findUniqueOrThrow({
@@ -238,7 +279,9 @@ export async function sendPartnerLink(movementId: string) {
     subject: `${m.partnership.companyA.name}: potvrďte pohyb obalů ${formatMovementNumber(m.number)}`,
     text:
       `Firma ${m.partnership.companyA.name} ${what} ${formatMovementNumber(m.number)} ` +
-      `ze dne ${m.date.toISOString().slice(0, 10)}${m.deliveryNote ? `, dodací list ${m.deliveryNote}` : ""}:\n${lines}\n\n` +
+      `ze dne ${m.date.toISOString().slice(0, 10)}${m.deliveryNote ? `, dodací list ${m.deliveryNote}` : ""}:\n${lines}\n` +
+      (m.note ? `Poznámka: ${m.note}\n` : "") +
+      `\n` +
       `Potvrďte nebo rozporujte zde (bez registrace, odkaz platí ${LINK_VALID_DAYS} dní a lze ho použít jednou):\n${url}\n\n` +
       `---\nPlease confirm or dispute this packaging movement (no registration needed): ${url}`,
   });

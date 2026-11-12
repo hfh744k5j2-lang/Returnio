@@ -1,11 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import type { Tx } from "./db";
+import type { Tx, prisma } from "./db";
 
 export type Actor = { userId?: string | null; label?: string | null };
 
 /** Zápis do auditní stopy. Záznamy se nikdy nemění ani nemažou. */
 export async function audit(
-  tx: Tx,
+  tx: Tx | typeof prisma,
   entry: {
     actor: Actor;
     companyId?: string | null;

@@ -16,16 +16,27 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
     let stopped = false;
     async function start() {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setError(t("scan.cameraNeedsHttps"));
+          return;
+        }
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-        const video = videoRef.current!;
+        if (stopped || !videoRef.current) {
+          // skener byl zavřen dřív, než uživatel povolil kameru – hned ji vypnout
+          stream.getTracks().forEach((tr) => tr.stop());
+          return;
+        }
+        const video = videoRef.current;
         video.srcObject = stream;
         await video.play();
         const tick = () => {
           if (stopped) return;
           const canvas = canvasRef.current!;
           if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            // zmenšený obraz – rychlejší dekódování na levných telefonech
+            const scale = Math.min(1, 640 / (video.videoWidth || 640));
+            canvas.width = Math.round(video.videoWidth * scale);
+            canvas.height = Math.round(video.videoHeight * scale);
             const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -55,7 +66,7 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
     <div className="fixed inset-0 z-50 flex flex-col bg-black" role="dialog" aria-label={t("scan.cameraTitle")}>
       <div className="flex items-center justify-between p-3 text-white">
         <span className="font-semibold">{t("scan.pointCamera")}</span>
-        <button className="btn-secondary btn-sm" onClick={onClose}>{t("common.cancel")}</button>
+        <button className="btn-secondary" onClick={onClose}>{t("common.cancel")}</button>
       </div>
       {error ? (
         <p className="m-4 rounded-lg bg-white p-4 text-sm">{error}</p>
