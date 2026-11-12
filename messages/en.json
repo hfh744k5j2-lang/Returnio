@@ -1,0 +1,139 @@
+{
+  "common": {
+    "email": "Email",
+    "save": "Save",
+    "saved": "Saved.",
+    "cancel": "Cancel",
+    "detail": "Details",
+    "all": "All",
+    "partner": "Partner",
+    "date": "Date",
+    "back": "Back",
+    "search": "Search",
+    "filter": "Filter",
+    "yes": "Yes",
+    "no": "No",
+    "pcs": "pcs",
+    "none": "–"
+  },
+  "nav": {
+    "dashboard": "Overview",
+    "scan": "Scan",
+    "movements": "Movements",
+    "balances": "Balance",
+    "partners": "Partners",
+    "packaging": "Packaging",
+    "import": "Import",
+    "ppwr": "PPWR report",
+    "audit": "Change history",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "roles": {
+    "ADMIN": "Admin",
+    "LOGISTIK": "Logistics",
+    "SKLAD": "Warehouse"
+  },
+  "countries": {
+    "CZ": "Czechia",
+    "SK": "Slovakia",
+    "PL": "Poland",
+    "DE": "Germany",
+    "AT": "Austria",
+    "HU": "Hungary",
+    "OTHER": "Other"
+  },
+  "login": {
+    "title": "Sign in",
+    "intro": "Enter your work email. We will send you a sign-in link – no password needed.",
+    "submit": "Send sign-in link",
+    "newCompany": "New company? Sign in the same way – you will register your company after the first sign-in.",
+    "error": "Sign-in failed or the link expired. Please try again.",
+    "checkTitle": "Check your email",
+    "checkText": "We have sent you a sign-in link. It is valid for 1 hour."
+  },
+  "onboarding": {
+    "title": "Register your company",
+    "intro": "You are signed in as {email}. Enter your company details – you will become its admin.",
+    "submit": "Register company",
+    "inviteHint": "If a colleague invited you, open the link from the invitation instead."
+  },
+  "company": {
+    "name": "Company name",
+    "regNumber": "Company ID / VAT ID",
+    "country": "Country",
+    "address": "Address"
+  },
+  "invite": {
+    "title": "Company invitation",
+    "invalid": "The invitation is invalid, expired or already used.",
+    "text": "{company} invites you to ObalBook with the role {role}.",
+    "signInFirst": "Sign in as {email}",
+    "wrongEmail": "This invitation is for {email}. Sign out and sign in with that email.",
+    "accept": "Accept invitation"
+  },
+  "partnerInvite": {
+    "title": "Invitation from a business partner",
+    "invalid": "The invitation is invalid or already used.",
+    "text": "{company} wants to share returnable packaging records with you. Both sides will see the same balance.",
+    "signIn": "Sign in / register for free",
+    "noRegistration": "You do not have to register – you can confirm movements via links in emails.",
+    "createCompany": "First enter your company details.",
+    "registerAndAccept": "Register company and accept",
+    "asCompany": "Accept as {company}.",
+    "accept": "Accept invitation",
+    "needRole": "Only an admin or logistics user of your company can accept the invitation."
+  },
+  "settings": {
+    "title": "Settings",
+    "company": "Company",
+    "balanceAlertLimit": "Balance alert limit (pcs per partner)",
+    "balanceAlertLimitHelp": "When the balance with any partner exceeds this number of pieces, we send an email. Empty = no alert.",
+    "users": "Users",
+    "role": "Role",
+    "you": "you",
+    "removeUser": "Remove",
+    "rolesHelp": "Admin manages the company and users. Logistics manages partners, packaging, imports and reports. Warehouse records issues and receipts and confirms movements.",
+    "inviteTitle": "Invite a colleague",
+    "inviteSubmit": "Send invitation",
+    "inviteSent": "Invitation sent.",
+    "invitePending": "pending",
+    "revoke": "Revoke"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "scan": "Scan packaging",
+    "newMovement": "New movement",
+    "toConfirm": "Waiting for your confirmation",
+    "disputesForMe": "Disputes to resolve",
+    "waitingForPartner": "Waiting for partner confirmation",
+    "balanceByPartner": "Balance by partner",
+    "recent": "Recent movements",
+    "setupTitle": "Finish the setup:",
+    "setupTypes": "Add packaging types (pallets, crates…)",
+    "setupPartners": "Invite your first partner company"
+  },
+  "status": {
+    "PROPOSED": "Awaiting confirmation",
+    "CONFIRMED": "Confirmed",
+    "DISPUTED": "Disputed",
+    "CANCELLED": "Cancelled"
+  },
+  "kinds": {
+    "ISSUE": "Issue",
+    "RECEIPT": "Receipt",
+    "RETURN": "Return",
+    "LOSS": "Loss",
+    "DAMAGE": "Damage",
+    "CORRECTION": "Correction"
+  },
+  "balances": {
+    "empty": "No balance yet.",
+    "confirmed": "Confirmed balance",
+    "pending": "Awaiting confirmation",
+    "signHelp": "Positive = the partner holds our packaging (owes us). Negative = we hold the partner's packaging."
+  },
+  "movements": {
+    "empty": "No movements yet."
+  }
+}

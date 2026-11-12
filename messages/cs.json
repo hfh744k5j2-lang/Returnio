@@ -1,0 +1,139 @@
+{
+  "common": {
+    "email": "E-mail",
+    "save": "Uložit",
+    "saved": "Uloženo.",
+    "cancel": "Zrušit",
+    "detail": "Detail",
+    "all": "Vše",
+    "partner": "Partner",
+    "date": "Datum",
+    "back": "Zpět",
+    "search": "Hledat",
+    "filter": "Filtrovat",
+    "yes": "Ano",
+    "no": "Ne",
+    "pcs": "ks",
+    "none": "–"
+  },
+  "nav": {
+    "dashboard": "Přehled",
+    "scan": "Skenovat",
+    "movements": "Pohyby",
+    "balances": "Saldo",
+    "partners": "Partneři",
+    "packaging": "Obaly",
+    "import": "Import",
+    "ppwr": "Výkaz PPWR",
+    "audit": "Historie změn",
+    "settings": "Nastavení",
+    "signOut": "Odhlásit"
+  },
+  "roles": {
+    "ADMIN": "Admin",
+    "LOGISTIK": "Logistik",
+    "SKLAD": "Sklad"
+  },
+  "countries": {
+    "CZ": "Česko",
+    "SK": "Slovensko",
+    "PL": "Polsko",
+    "DE": "Německo",
+    "AT": "Rakousko",
+    "HU": "Maďarsko",
+    "OTHER": "Jiná"
+  },
+  "login": {
+    "title": "Přihlášení",
+    "intro": "Zadejte svůj pracovní e-mail. Pošleme vám odkaz, kterým se přihlásíte – bez hesla.",
+    "submit": "Poslat přihlašovací odkaz",
+    "newCompany": "Nová firma? Přihlaste se stejně – po prvním přihlášení firmu zaregistrujete.",
+    "error": "Přihlášení se nepodařilo nebo odkaz vypršel. Zkuste to znovu.",
+    "checkTitle": "Zkontrolujte e-mail",
+    "checkText": "Poslali jsme vám přihlašovací odkaz. Platí 1 hodinu."
+  },
+  "onboarding": {
+    "title": "Registrace firmy",
+    "intro": "Jste přihlášeni jako {email}. Zadejte údaje o firmě – stanete se jejím adminem.",
+    "submit": "Zaregistrovat firmu",
+    "inviteHint": "Pokud vás pozval kolega, otevřete odkaz z pozvánky – firmu nezakládejte."
+  },
+  "company": {
+    "name": "Název firmy",
+    "regNumber": "IČO / DIČ",
+    "country": "Země",
+    "address": "Adresa"
+  },
+  "invite": {
+    "title": "Pozvánka do firmy",
+    "invalid": "Pozvánka je neplatná, vypršela nebo už byla použita.",
+    "text": "Firma {company} vás zve do ObalBook s rolí {role}.",
+    "signInFirst": "Přihlásit se jako {email}",
+    "wrongEmail": "Pozvánka je pro {email}. Odhlaste se a přihlaste se tímto e-mailem.",
+    "accept": "Přijmout pozvánku"
+  },
+  "partnerInvite": {
+    "title": "Pozvánka od obchodního partnera",
+    "invalid": "Pozvánka je neplatná nebo už byla použita.",
+    "text": "Firma {company} s vámi chce sdílet evidenci vratných obalů. Obě strany pak uvidí stejné saldo.",
+    "signIn": "Přihlásit se / zaregistrovat zdarma",
+    "noRegistration": "Registrovat se nemusíte – pohyby můžete potvrzovat přes odkazy v e-mailech.",
+    "createCompany": "Nejdřív zadejte údaje o své firmě.",
+    "registerAndAccept": "Zaregistrovat firmu a přijmout",
+    "asCompany": "Přijmout jako firma {company}.",
+    "accept": "Přijmout pozvánku",
+    "needRole": "Pozvánku může přijmout jen admin nebo logistik vaší firmy."
+  },
+  "settings": {
+    "title": "Nastavení",
+    "company": "Firma",
+    "balanceAlertLimit": "Limit salda pro upozornění (ks na partnera)",
+    "balanceAlertLimitHelp": "Když saldo s některým partnerem přesáhne tento počet kusů, pošleme e-mail. Prázdné = bez upozornění.",
+    "users": "Uživatelé",
+    "role": "Role",
+    "you": "vy",
+    "removeUser": "Odebrat",
+    "rolesHelp": "Admin spravuje firmu a uživatele. Logistik spravuje partnery, obaly, importy a výkazy. Sklad zapisuje výdeje a příjmy a potvrzuje pohyby.",
+    "inviteTitle": "Pozvat kolegu",
+    "inviteSubmit": "Poslat pozvánku",
+    "inviteSent": "Pozvánka odeslána.",
+    "invitePending": "čeká na přijetí",
+    "revoke": "Zrušit pozvánku"
+  },
+  "dashboard": {
+    "title": "Přehled",
+    "scan": "Skenovat obaly",
+    "newMovement": "Nový pohyb",
+    "toConfirm": "Čeká na vaše potvrzení",
+    "disputesForMe": "Rozpory k vyřešení",
+    "waitingForPartner": "Čeká na potvrzení partnerem",
+    "balanceByPartner": "Saldo podle partnerů",
+    "recent": "Poslední pohyby",
+    "setupTitle": "Dokončete nastavení:",
+    "setupTypes": "Přidejte typy obalů (palety, přepravky…)",
+    "setupPartners": "Pozvěte první partnerskou firmu"
+  },
+  "status": {
+    "PROPOSED": "Čeká na potvrzení",
+    "CONFIRMED": "Potvrzeno",
+    "DISPUTED": "Rozpor",
+    "CANCELLED": "Zrušeno"
+  },
+  "kinds": {
+    "ISSUE": "Výdej",
+    "RECEIPT": "Příjem",
+    "RETURN": "Vrácení",
+    "LOSS": "Ztráta",
+    "DAMAGE": "Poškození",
+    "CORRECTION": "Oprava"
+  },
+  "balances": {
+    "empty": "Zatím žádné saldo.",
+    "confirmed": "Potvrzené saldo",
+    "pending": "Čeká na potvrzení",
+    "signHelp": "Kladné číslo = partner má naše obaly (dluží nám). Záporné = my máme obaly partnera."
+  },
+  "movements": {
+    "empty": "Zatím žádné pohyby."
+  }
+}

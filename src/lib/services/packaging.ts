@@ -1,0 +1,111 @@
+import { z } from "zod";
+import { prisma } from "../db";
+import { audit } from "../audit";
+import type { Ctx } from "../context";
+import { assertCan } from "../permissions";
+import { conflict, notFound } from "../errors";
+import { parse } from "./validate";
+import { getPartnershipRaw } from "./partners";
+
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((v) => (v === "" || v === undefined || v === null ? undefined : v), schema.optional());
+
+export const packagingSchema = z.object({
+  name: z.string().trim().min(2, "Zadejte název obalu.").max(120),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9_.-]{1,20}$/, "Kód smí obsahovat jen písmena A–Z, číslice, tečku, - a _ (max. 20 znaků)."),
+  material: z.string().trim().max(60).optional(),
+  weightKg: z.coerce
+    .number({ invalid_type_error: "Hmotnost musí být číslo." })
+    .min(0, "Hmotnost nesmí být záporná.")
+    .max(10000, "Hmotnost je příliš velká."),
+  deposit: optionalNumber(z.coerce.number().min(0, "Kauce nesmí být záporná.").max(1_000_000)),
+  currency: z.enum(["CZK", "EUR"]).default("CZK"),
+  reusable: z.preprocess((v) => v === true || v === "true" || v === "on" || v === "1", z.boolean()),
+  active: z.preprocess((v) => (v === undefined ? true : v === true || v === "true" || v === "on"), z.boolean()).optional(),
+});
+
+export async function listPackagingTypes(ctx: Ctx, opts: { includeInactive?: boolean } = {}) {
+  return prisma.packagingType.findMany({
+    where: { companyId: ctx.companyId, ...(opts.includeInactive ? {} : { active: true }) },
+    orderBy: { code: "asc" },
+  });
+}
+
+export async function getPackagingType(ctx: Ctx, id: string) {
+  const t = await prisma.packagingType.findFirst({ where: { id, companyId: ctx.companyId } });
+  if (!t) throw notFound("Typ obalu");
+  return t;
+}
+
+/**
+ * Typy obalů použitelné v pohybech s partnerem = vlastní typy obou stran partnerství.
+ * (Partner vrací naše palety, my vracíme jeho přepravky.)
+ */
+export async function listTypesForPartnership(ctx: Ctx, partnershipId: string) {
+  const p = await getPartnershipRaw(ctx, partnershipId);
+  const companyIds = [p.companyAId, p.companyBId].filter((x): x is string => Boolean(x));
+  return prisma.packagingType.findMany({
+    where: { companyId: { in: companyIds }, active: true },
+    include: { company: { select: { id: true, name: true } } },
+    orderBy: [{ companyId: "asc" }, { code: "asc" }],
+  });
+}
+
+export async function createPackagingType(ctx: Ctx, input: unknown) {
+  assertCan(ctx.role, "packaging.manage");
+  const data = parse(packagingSchema, input);
+  const clash = await prisma.packagingType.findFirst({ where: { companyId: ctx.companyId, code: data.code } });
+  if (clash) throw conflict(`Kód ${data.code} už používáte.`);
+  return prisma.$transaction(async (tx) => {
+    const t = await tx.packagingType.create({
+      data: { ...data, active: data.active ?? true, companyId: ctx.companyId },
+    });
+    await audit(tx, {
+      actor: { userId: ctx.userId },
+      companyId: ctx.companyId,
+      action: "packaging.created",
+      entityType: "PackagingType",
+      entityId: t.id,
+      data: { ...data },
+    });
+    return t;
+  });
+}
+
+export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) {
+  assertCan(ctx.role, "packaging.manage");
+  const before = await getPackagingType(ctx, id);
+  const data = parse(packagingSchema, input);
+  const clash = await prisma.packagingType.findFirst({
+    where: { companyId: ctx.companyId, code: data.code, id: { not: id } },
+  });
+  if (clash) throw conflict(`Kód ${data.code} už používáte.`);
+  return prisma.$transaction(async (tx) => {
+    const t = await tx.packagingType.update({
+      where: { id: before.id },
+      data: { ...data, active: data.active ?? before.active, deposit: data.deposit ?? null },
+    });
+    await audit(tx, {
+      actor: { userId: ctx.userId },
+      companyId: ctx.companyId,
+      action: "packaging.updated",
+      entityType: "PackagingType",
+      entityId: t.id,
+      data: {
+        before: {
+          name: before.name,
+          code: before.code,
+          weightKg: before.weightKg.toString(),
+          reusable: before.reusable,
+          active: before.active,
+        },
+        after: { ...data },
+      },
+    });
+    return t;
+  });
+}
