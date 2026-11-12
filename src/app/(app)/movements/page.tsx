@@ -7,6 +7,7 @@ import { listPartners } from "@/lib/services/partners";
 import { getT } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { directionKey } from "@/lib/direction";
 
 const STATUSES: MovementStatus[] = ["PROPOSED", "DISPUTED", "CONFIRMED", "CANCELLED"];
 const AWAITING = ["me", "dispute", "partner"] as const;
@@ -99,7 +100,7 @@ export default async function MovementsPage({ searchParams }: { searchParams: Pr
                   <td>{m.partnerName}</td>
                   <td>
                     {t(`kinds.${m.kind}`)}
-                    <span className="block text-xs text-slate-500">{m.direction === "OUT" ? t("movements.toPartner") : t("movements.fromPartner")}</span>
+                    <span className="block text-xs text-slate-500">{t(directionKey(m.kind, m.direction))}</span>
                   </td>
                   <td className="text-sm">
                     {m.lines.map((l) => (

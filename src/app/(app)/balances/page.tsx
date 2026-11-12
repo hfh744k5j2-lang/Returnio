@@ -4,7 +4,7 @@ import { can } from "@/lib/permissions";
 import { getBalances } from "@/lib/services/balance";
 import { listPartners } from "@/lib/services/partners";
 import { getT } from "@/lib/i18n/server";
-import { formatNumber, isoDate } from "@/lib/format";
+import { formatNumber, todayLocal } from "@/lib/format";
 import { BalanceCell } from "@/components/BalanceText";
 
 export default async function BalancesPage({ searchParams }: { searchParams: Promise<{ partner?: string; asOf?: string }> }) {
@@ -26,6 +26,7 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
         {can(ctx.role, "export.run") && <a className="btn-secondary" href={`/api/v1/export/balances?${exportQs}`}>{t("balances.exportCsv")}</a>}
       </div>
       <p className="muted">{t("balances.intro")}</p>
+      {asOfDate && <p className="alert-warn">{t("balances.asOfNote")}</p>}
       <form method="get" className="card grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
         <div>
           <label className="label" htmlFor="b-partner">{t("common.partner")}</label>
@@ -36,7 +37,7 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
         </div>
         <div>
           <label className="label" htmlFor="b-asof">{t("balances.asOf")}</label>
-          <input id="b-asof" type="date" name="asOf" defaultValue={sp.asOf ?? ""} max={isoDate(new Date())} className="input" />
+          <input id="b-asof" type="date" name="asOf" defaultValue={sp.asOf ?? ""} max={todayLocal()} className="input" />
         </div>
         <button className="btn-secondary">{t("common.filter")}</button>
       </form>
@@ -56,7 +57,7 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
                   <th>{t("packaging.type")}</th>
                   <th>{t("balances.confirmed")}</th>
                   <th className="text-right">{t("balances.number")}</th>
-                  <th className="text-right">{t("balances.pending")}</th>
+                  {!asOfDate && <th className="text-right">{t("balances.pending")}</th>}
                   <th className="text-right">{t("balances.depositValue")}</th>
                 </tr>
               </thead>
@@ -66,7 +67,7 @@ export default async function BalancesPage({ searchParams }: { searchParams: Pro
                     <td>{r.typeName} <span className="font-mono text-xs text-slate-500">{r.typeCode}</span><span className="block text-xs text-slate-500">{t("movementForm.owner", { owner: r.ownerName })}</span></td>
                     <td><BalanceCell t={t} n={r.confirmed} /></td>
                     <td className="text-right font-semibold tabular-nums">{r.confirmed}</td>
-                    <td className="text-right tabular-nums text-slate-600">{r.pending ? (r.pending > 0 ? `+${r.pending}` : r.pending) : "–"}</td>
+                    {!asOfDate && <td className="text-right tabular-nums text-slate-600">{r.pending ? t("balances.pendingChange", { n: r.pending > 0 ? `+${r.pending}` : r.pending }) : "–"}</td>}
                     <td className="text-right tabular-nums">{r.deposit ? `${formatNumber(r.confirmed * r.deposit, locale, 2)} ${r.currency === "CZK" ? "Kč" : "EUR"}` : "–"}</td>
                   </tr>
                 ))}

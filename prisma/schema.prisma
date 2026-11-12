@@ -212,11 +212,14 @@ model Movement {
   /// Potvrzení přes jednorázový odkaz – jméno, které zadal partner.
   confirmedByLabel String?
   importBatchId   String?
+  /// Idempotenční klíč z formuláře – dvojí odeslání nevytvoří dva pohyby.
+  clientKey       String?
   lines           MovementLine[]
   corrections     MovementCorrection[]
   partnerLinks    PartnerLinkToken[]
 
   @@unique([partnershipId, number])
+  @@unique([partnershipId, clientKey])
   @@index([partnershipId, status])
   @@index([date])
 }

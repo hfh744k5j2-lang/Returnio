@@ -38,6 +38,7 @@ export function MovementForm({
   const [date, setDate] = useState(today);
   const [deliveryNote, setDeliveryNote] = useState("");
   const [note, setNote] = useState("");
+  const [clientKey] = useState(() => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Math.random())));
 
   useEffect(() => {
     if (!partnerId) {
@@ -68,8 +69,10 @@ export function MovementForm({
     date,
     deliveryNote: deliveryNote || undefined,
     note: note || undefined,
+    clientKey,
     lines,
   });
+  const negative = Object.values(qty).some((v) => v !== "" && Number(v) < 0);
 
   return (
     <form action={formAction} className="space-y-5" data-testid="movement-form">
@@ -78,7 +81,7 @@ export function MovementForm({
       <div className={compact ? "space-y-4" : "grid gap-4 sm:grid-cols-2"}>
         <div>
           <label className="label" htmlFor="mf-partner">{t("common.partner")}</label>
-          <select id="mf-partner" className="input" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} required>
+          <select id="mf-partner" className="input" value={partnerId} onChange={(e) => { setPartnerId(e.target.value); setQty({}); }} required>
             <option value="">{t("movementForm.choosePartner")}</option>
             {partners.map((p) => (
               <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
@@ -169,8 +172,9 @@ export function MovementForm({
         </div>
       </div>
 
+      {negative && <p className="alert-error">{t("movementForm.negative")}</p>}
       {state?.error && <p className="alert-error">{state.error}</p>}
-      <button className="btn-primary w-full sm:w-auto" disabled={pending || !partnerId || lines.length === 0}>
+      <button className="btn-primary w-full sm:w-auto" disabled={pending || !partnerId || lines.length === 0 || negative}>
         {pending ? t("movementForm.saving") : t("movementForm.submit", { kind: t(`kinds.${kind}`).toLowerCase() })}
       </button>
       <p className="muted">{t("movementForm.afterSave")}</p>

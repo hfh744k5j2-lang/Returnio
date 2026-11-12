@@ -130,7 +130,7 @@
     "RETURN": "Vrácení",
     "LOSS": "Ztráta",
     "DAMAGE": "Poškození",
-    "CORRECTION": "Oprava"
+    "CORRECTION": "Úprava salda"
   },
   "balances": {
     "empty": "Zatím žádné saldo.",
@@ -147,7 +147,9 @@
     "number": "Počet (ks)",
     "depositValue": "Hodnota kaucí",
     "exportCsv": "Export salda (CSV)",
-    "pendingHelp": "„Čeká na potvrzení“ ukazuje, o kolik se saldo změní po potvrzení (u rozporu podle aktuálního návrhu opravy)."
+    "pendingHelp": "„Čeká na potvrzení“ ukazuje, o kolik se saldo změní po potvrzení (u rozporu podle aktuálního návrhu opravy).",
+    "pendingChange": "{n} po potvrzení",
+    "asOfNote": "Saldo ke dni počítá pohyby s datem do zvoleného dne podle jejich dnešního stavu potvrzení."
   },
   "movements": {
     "empty": "Zatím žádné pohyby.",
@@ -270,10 +272,11 @@
     "owner": "obal firmy {owner}",
     "count": "Počet",
     "deliveryNote": "Číslo dodacího listu",
-    "note": "Poznámka",
+    "note": "Poznámka (uvidí i partner)",
     "saving": "Ukládám…",
     "submit": "Uložit {kind}",
-    "afterSave": "Po uložení pohyb potvrdí partner. Do salda se započítá až po potvrzení."
+    "afterSave": "Po uložení pohyb potvrdí partner. Do salda se započítá až po potvrzení.",
+    "negative": "Počet nesmí být záporný."
   },
   "movementDetail": {
     "created": "Pohyb {number} uložen. Čeká na potvrzení partnerem.",
@@ -284,7 +287,7 @@
     "createdBy": "Zapsal",
     "us": "My",
     "proposed": "Zapsáno",
-    "final": "Platí",
+    "final": "Potvrzeno",
     "disputeHistory": "Rozpor a návrhy opravy",
     "weProposed": "Náš návrh",
     "partnerProposed": "Návrh partnera {partner}",
@@ -303,10 +306,11 @@
     "waitingPartner": "Čeká na potvrzení partnerem.",
     "waitingPartnerEmail": "Partner dostal e-mail s odkazem na potvrzení.",
     "cancel": "Zrušit pohyb (zapsán omylem)",
-    "history": "Historie"
+    "history": "Historie",
+    "officeConfirms": "Ztrátu, poškození a úpravu salda potvrzuje logistik nebo admin vaší firmy."
   },
   "correction": {
-    "wasProposed": "zapsáno {n} ks",
+    "wasProposed": "navrženo {n} ks",
     "realCount": "Skutečný počet {name}",
     "reason": "Důvod",
     "reasonPlaceholder": "např. přišlo o 2 palety méně, 1 rozbitá"
@@ -317,7 +321,17 @@
     "SUPERSEDED": "nahrazeno jiným návrhem"
   },
   "partnerLink": {
-    "yourName": "Vaše jméno"
+    "yourName": "Vaše jméno",
+    "invalidTitle": "Odkaz už neplatí",
+    "invalidText": "Odkaz byl už použit, vypršel, nebo pohyb zrušila firma, která ho zapsala. Pokud jste registrovaní, přihlaste se do ObalBooku.",
+    "title": "{company} žádá o potvrzení pohybu obalů",
+    "resolveTitle": "{company} navrhuje opravu počtů",
+    "toYou": "od {company} k vám",
+    "fromYou": "od vás k {company}",
+    "proposedNow": "Navrženo",
+    "theirReason": "Důvod",
+    "nothingToDo": "U tohoto pohybu teď není potřeba nic dělat.",
+    "registerHint": "Chcete vidět saldo a všechny pohyby? Registrace v ObalBooku je pro partnery zdarma – použijte odkaz z pozvánky."
   },
   "audit": {
     "actions": {
@@ -330,5 +344,25 @@
         "cancelled": "zrušeno"
       }
     }
+  },
+  "scan": {
+    "title": "Skenovat obaly",
+    "stepPartner": "Partner",
+    "stepKind": "Co děláte?",
+    "stepItems": "Obaly a počty",
+    "scanPartner": "Naskenovat QR partnera",
+    "scanType": "Naskenovat QR obalu",
+    "orChoose": "nebo vyberte ze seznamu",
+    "change": "Změnit",
+    "minus": "Ubrat {name}",
+    "plus": "Přidat {name}",
+    "enterCounts": "Zadejte počty kusů",
+    "save": "Uložit {kind}: {n} ks",
+    "cameraTitle": "Kamera",
+    "pointCamera": "Namiřte na QR kód",
+    "cameraError": "Kameru se nepodařilo zapnout. Povolte přístup ke kameře v prohlížeči, nebo vyberte ze seznamu.",
+    "unknownCode": "Tento QR kód nepatří ObalBooku.",
+    "unknownPartner": "Tento QR kód patří partnerovi, kterého vaše firma nemá.",
+    "typeNotForPartner": "Tento obal nepatří vám ani vybranému partnerovi."
   }
 }

@@ -36,19 +36,23 @@ export function formatMovementNumber(n: number) {
 export const LINK_VALID_DAYS = 14;
 const MAX_QTY = 1_000_000;
 
+/** Počet: číslo nebo číselný řetězec (ne true/false/null). */
+const qtyInput = (v: unknown) => (typeof v === "number" || typeof v === "string" ? v : NaN);
+
 const lineSchema = z.object({
   packagingTypeId: z.string().min(1),
-  quantity: z.coerce
+  quantity: z.preprocess(qtyInput, z.coerce
     .number({ invalid_type_error: "Počet musí být číslo." })
     .int("Počet musí být celé číslo.")
     .min(1, "Počet musí být alespoň 1.")
-    .max(MAX_QTY, "Počet je příliš velký."),
+    .max(MAX_QTY, "Počet je příliš velký.")),
 });
 
 const dateSchema = z.coerce
   .date({ invalid_type_error: "Neplatné datum." })
   .refine((d) => d.getFullYear() >= 2000, "Datum je příliš staré.")
-  .refine((d) => d.getTime() <= Date.now() + 2 * 24 * 3600 * 1000, "Datum nesmí být v budoucnosti.");
+  // tolerance 1 den kvůli časovým pásmům (zákazníci v CZ/SK/PL)
+  .refine((d) => d.getTime() <= Date.now() + 24 * 3600 * 1000, "Datum nesmí být v budoucnosti.");
 
 export const createMovementSchema = z.object({
   partnershipId: z.string().min(1, "Vyberte partnera."),
@@ -59,6 +63,7 @@ export const createMovementSchema = z.object({
   date: dateSchema,
   deliveryNote: z.string().trim().max(60).optional(),
   note: z.string().trim().max(1000).optional(),
+  clientKey: z.string().trim().max(64).optional(),
   lines: z
     .array(lineSchema)
     .min(1, "Přidejte alespoň jeden obal s počtem.")
@@ -74,11 +79,11 @@ const correctionSchema = z.object({
     .array(
       z.object({
         packagingTypeId: z.string().min(1),
-        quantity: z.coerce
+        quantity: z.preprocess(qtyInput, z.coerce
           .number({ invalid_type_error: "Počet musí být číslo." })
           .int("Počet musí být celé číslo.")
           .min(0, "Počet nesmí být záporný.")
-          .max(MAX_QTY, "Počet je příliš velký."),
+          .max(MAX_QTY, "Počet je příliš velký.")),
       }),
     )
     .min(1),
@@ -112,6 +117,11 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   if (!BASIC_KINDS.includes(data.kind)) assertCan(ctx.role, "movements.createSpecial");
   const p = await getPartnershipRaw(ctx, data.partnershipId);
   const side = sideOf(p, ctx.companyId);
+  if (data.clientKey) {
+    // dvojí odeslání formuláře → vrátíme už uložený pohyb
+    const existing = await prisma.movement.findFirst({ where: { partnershipId: p.id, clientKey: data.clientKey }, include: { lines: true } });
+    if (existing) return existing;
+  }
   const fixed = FIXED_DIRECTION[data.kind];
   if (fixed && data.direction && data.direction !== fixed) throw invalid("Pro tento druh pohybu nelze zvolit směr.");
   const direction = fixed ?? data.direction;
@@ -124,6 +134,8 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
     where: { id: { in: data.lines.map((l) => l.packagingTypeId) }, companyId: { in: companyIds } },
   });
   if (types.length !== data.lines.length) throw invalid("Neznámý typ obalu.");
+  // deaktivovaný typ už nevydáváme; vrátit / odepsat ho jde (aby saldo šlo uzavřít)
+  if (data.kind === "ISSUE" && types.some((t) => !t.active)) throw invalid("Tento typ obalu je vyřazený – nelze ho vydat.");
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
   const run = async (tx: Tx) => {
@@ -141,6 +153,7 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
         note: data.note || null,
         createdById: ctx.userId,
         importBatchId: opts.importBatchId ?? null,
+        clientKey: data.clientKey || null,
         lines: {
           create: data.lines.map((l) => ({
             packagingTypeId: l.packagingTypeId,
@@ -178,6 +191,10 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
       try {
         m = await prisma.$transaction(run);
       } catch (e) {
+        if (data.clientKey && isUniqueViolation(e)) {
+          const existing = await prisma.movement.findFirst({ where: { partnershipId: p.id, clientKey: data.clientKey }, include: { lines: true } });
+          if (existing) return existing;
+        }
         if (attempt < 5 && isUniqueViolation(e)) continue;
         throw e;
       }
@@ -193,9 +210,15 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
 export async function sendPartnerLink(movementId: string) {
   const m = await prisma.movement.findUniqueOrThrow({
     where: { id: movementId },
-    include: { partnership: { include: { companyA: true } }, lines: { include: { packagingType: true } } },
+    include: {
+      partnership: { include: { companyA: true } },
+      lines: { include: { packagingType: true } },
+      corrections: { where: { status: "OPEN" } },
+    },
   });
   if (m.partnership.companyBId) return null;
+  const open = m.corrections[0];
+  const proposed = new Map(((open?.lines ?? []) as { packagingTypeId: string; quantity: number }[]).map((l) => [l.packagingTypeId, l.quantity]));
   const { token, hash } = newToken();
   await prisma.partnerLinkToken.create({
     data: {
@@ -206,7 +229,9 @@ export async function sendPartnerLink(movementId: string) {
     },
   });
   const url = appUrl(`/p/${token}`);
-  const lines = m.lines.map((l) => `  - ${l.packagingType.name} (${l.packagingType.code}): ${l.quantity} ks`).join("\n");
+  const lines =
+    m.lines.map((l) => `  - ${l.packagingType.name} (${l.packagingType.code}): ${proposed.get(l.packagingTypeId) ?? l.quantity} ks`).join("\n") +
+    (open ? `\nDůvod: ${open.reason}` : "");
   const what = m.status === "DISPUTED" ? "navrhuje opravu pohybu" : "zapsala pohyb obalů";
   await sendEmail({
     to: m.partnership.invitedEmail,
@@ -317,6 +342,8 @@ export function toMovementView(m: MovementFull, companyId: string | null, role: 
   const iAmCreator = m.createdBySide === mySide;
   const isPending = m.status === "PROPOSED";
   const r = role ?? "SKLAD";
+  const special = !BASIC_KINDS.includes(m.kind);
+  const officeOk = !special || can(r, "movements.createSpecial");
   return {
     id: m.id,
     number: m.number,
@@ -359,9 +386,9 @@ export function toMovementView(m: MovementFull, companyId: string | null, role: 
       ? { id: openCorrection.id, byMe: openCorrection.proposedBySide === mySide }
       : null,
     can: {
-      confirm: isPending && !iAmCreator && can(r, "movements.confirm"),
-      dispute: isPending && !iAmCreator && can(r, "movements.dispute"),
-      cancel: isPending && iAmCreator && can(r, "movements.create"),
+      confirm: isPending && !iAmCreator && officeOk && can(r, "movements.confirm"),
+      dispute: isPending && !iAmCreator && officeOk && can(r, "movements.dispute"),
+      cancel: isPending && iAmCreator && officeOk && can(r, "movements.create"),
       resolve:
         m.status === "DISPUTED" && !!openCorrection && openCorrection.proposedBySide !== mySide && can(r, "disputes.resolve"),
     },
@@ -447,7 +474,12 @@ function normalizeCorrection(m: MovementFull, input: unknown) {
   for (const id of byType.keys()) {
     if (!m.lines.some((l) => l.packagingTypeId === id)) throw invalid("Opravit lze jen obaly, které jsou v pohybu.");
   }
-  const lines = m.lines.map((l) => ({ packagingTypeId: l.packagingTypeId, quantity: byType.get(l.packagingTypeId) ?? l.quantity }));
+  // neuvedené položky = aktuálně navržený počet (ne původní)
+  const cur = currentProposal(m);
+  const lines = m.lines.map((l) => ({
+    packagingTypeId: l.packagingTypeId,
+    quantity: byType.get(l.packagingTypeId) ?? cur.get(l.packagingTypeId) ?? l.quantity,
+  }));
   return { reason: data.reason, lines };
 }
 
@@ -563,15 +595,22 @@ async function doCounter(m: MovementFull, a: Acting, input: unknown) {
   return corr;
 }
 
+/** Ztrátu, poškození a úpravu salda potvrzuje / rozporuje / ruší jen admin nebo logistik. */
+function assertSpecialAllowed(ctx: Ctx, m: MovementFull) {
+  if (!BASIC_KINDS.includes(m.kind)) assertCan(ctx.role, "movements.createSpecial");
+}
+
 export async function confirmMovement(ctx: Ctx, id: string) {
   assertCan(ctx.role, "movements.confirm");
   const m = await loadScoped(ctx, id);
+  assertSpecialAllowed(ctx, m);
   await doConfirm(m, actingFromCtx(ctx, m));
 }
 
 export async function disputeMovement(ctx: Ctx, id: string, input: unknown) {
   assertCan(ctx.role, "movements.dispute");
   const m = await loadScoped(ctx, id);
+  assertSpecialAllowed(ctx, m);
   return doDispute(m, actingFromCtx(ctx, m), input);
 }
 
@@ -590,6 +629,7 @@ export async function counterCorrection(ctx: Ctx, id: string, input: unknown) {
 export async function cancelMovement(ctx: Ctx, id: string) {
   assertCan(ctx.role, "movements.create");
   const m = await loadScoped(ctx, id);
+  assertSpecialAllowed(ctx, m);
   const a = actingFromCtx(ctx, m);
   if (m.createdBySide !== a.side) throw forbidden("Zrušit může jen firma, která pohyb zapsala.");
   if (m.status !== "PROPOSED") throw conflict("Zrušit lze jen pohyb, který ještě nebyl potvrzen ani rozporován.");

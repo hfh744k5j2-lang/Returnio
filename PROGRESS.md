@@ -97,3 +97,21 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 - Ztráta/poškození: uživatel volí, kde k ní došlo; „u partnera“ snižuje partnerův dluh (odpis), „u nás“ snižuje náš dluh. Kauce/fakturace ztrát je mimo MVP.
 - Opravit lze jen počty položek, které jsou v pohybu (nová položka = nový pohyb). Potvrzený pohyb se nemění; chyba se opraví pohybem „Oprava“.
 - Zrušit lze jen navržený pohyb (ne rozporovaný) – rozporovaný se řeší dohodou, i na 0 ks.
+
+**Revize M4 (sub-agent) – 17 bodů, kritické žádné; opraveny závažné:**
+- Dvojí odeslání formuláře vytvořilo dva výdeje → idempotenční klíč `Movement.clientKey` (unikátní v partnerství), formulář i skenování ho generují; opakované/ souběžné odeslání vrátí existující pohyb. Test.
+- Výchozí datum a `max` v UTC (noční směna dostala včerejšek) → `todayLocal()` v Europe/Prague; tolerance budoucího data 1 den.
+- Skladník mohl potvrdit úpravu salda / ztrátu od partnera → zvláštní druhy potvrzuje, rozporuje a ruší jen admin/logistik; skladník vidí vysvětlení. Test.
+- Protinávrh přes API tiše vracel neuvedené položky na původní počet → doplňuje se z aktuálního návrhu. Test.
+- E-mail s protinávrhem ukazoval původní počty → ukazuje navržené počty a důvod (ověřeno v e2e M5).
+- Mrtvý odkaz `/p/[token]` → stránka hotová v M5.
+- Drobné opraveny: vyčištění počtů při změně partnera, hláška u záporného počtu, `true` jako počet se nepřijme, vyřazený typ nejde vydat (jen vrátit/odepsat), texty: „Úprava salda“ místo „Oprava“, „Poznámka (uvidí i partner)“, „navrženo X ks“, „Potvrzeno“, směr u ztráty/poškození slovy („u partnera“/„u nás“), „+3 po potvrzení“, u salda ke dni skrytý sloupec čekajících + vysvětlení.
+- Do dluhu: saldo „ke dni“ bere dnešní stav potvrzení; spotřeba jednorázového odkazu a akce nejsou v jedné DB transakci (při chybě akce se odkaz vrací do platnosti); rychlý filtr „Rozpory k vyřešení“ zobrazí skladníkovi i rozpory, které řeší kancelář; hodnota kaucí počítá z aktuální kauce typu (ne ze snímku).
+
+## M5 Mobilní skenování QR a jednorázové odkazy – hotovo
+
+**Hotové:** stránka Skenovat pro telefon: krok 1 partner (QR kamerou přes `getUserMedia` + `jsQR`, nebo výběr), krok 2 výdej/příjem/vrácení velkými tlačítky, krok 3 obaly (QR nebo seznam) s tlačítky −/+ a polem počtu, uložit spodním tlačítkem „Uložit Výdej: 14 ks“, po uložení „Skenovat další“. QR kódy jsou běžné URL (`/scan?partner=…`, `/scan?type=…`), takže je otevře i fotoaparát telefonu; nepřihlášený uživatel se po přihlášení vrátí zpět (middleware předává cestu). ID z QR se ověřují proti vlastním partnerům a typům stran partnerství (cizí QR → srozumitelná hláška). Veřejná stránka `/p/[token]` pro partnera bez registrace: detail pohybu z jeho pohledu, potvrzení se jménem, rozpor s počty a důvodem, při protinávrhu firmy přijetí nebo další návrh; po akci odkaz přestane platit; `noindex`, `no-referrer`.
+
+**Testováno:** `npm run check` OK (65 unit testů, mj. parser QR). Playwright (projekt „mobile“, Pixel 7) `m5-mobile.spec.ts`: QR odkaz bez přihlášení → login s návratem → partner z QR, obal z QR, +/−, počet, uložení výdeje (ověřeno v DB) → „Skenovat další“; QR cizího partnera se ignoruje; neregistrovaný partner rozporuje přes odkaz → odkaz pak neplatí → firma navrhne 9 → e-mail ukazuje 9 ks → partner přijme novým odkazem → potvrzeno s 9 ks. Celá e2e sada (M1–M5) prošla.
+
+**Rozhodnutí:** QR čtečka v prohlížeči přes `jsQR` (žádná nativní aplikace, žádná externí služba). Kameru nelze v CI testovat – testuje se tok přes URL z QR a parser zvlášť. Skladník má na skenování jen výdej/příjem/vrácení s dnešním datem (ostatní ve formuláři Nový pohyb).

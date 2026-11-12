@@ -12,6 +12,11 @@ export function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Dnešní datum v pražském čase (YYYY-MM-DD) – noční směna nesmí dostat včerejšek. */
+export function todayLocal(timeZone = "Europe/Prague") {
+  return new Date().toLocaleDateString("sv-SE", { timeZone });
+}
+
 export function formatNumber(n: number, locale = "cs", digits = 0) {
   return n.toLocaleString(locale === "en" ? "en-GB" : locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }

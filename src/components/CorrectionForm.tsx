@@ -25,6 +25,7 @@ export function CorrectionForm({
   const [state, formAction, pending] = useActionState(action, null);
   const [qty, setQty] = useState<Record<string, string>>(Object.fromEntries(lines.map((l) => [l.packagingTypeId, String(l.current)])));
   const [reason, setReason] = useState("");
+  if (state?.ok && state.message) return <p className="alert-ok text-base" role="status">{state.message}</p>;
   const payload = JSON.stringify({
     reason,
     lines: lines.map((l) => ({ packagingTypeId: l.packagingTypeId, quantity: qty[l.packagingTypeId] === "" ? NaN : Number(qty[l.packagingTypeId]) })),

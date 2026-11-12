@@ -1,0 +1,10 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+/** Předá aktuální cestu serverovým komponentám (pro návrat po přihlášení, např. z QR kódu). */
+export function middleware(req: NextRequest) {
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", req.nextUrl.pathname + req.nextUrl.search);
+  return NextResponse.next({ request: { headers } });
+}
+
+export const config = { matcher: ["/((?!api|_next|favicon.ico).*)"] };

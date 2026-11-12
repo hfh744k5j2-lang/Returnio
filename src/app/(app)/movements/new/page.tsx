@@ -4,7 +4,7 @@ import { can } from "@/lib/permissions";
 import { BASIC_KINDS, MOVEMENT_KINDS } from "@/lib/services/movements";
 import { listPartners } from "@/lib/services/partners";
 import { getT } from "@/lib/i18n/server";
-import { isoDate } from "@/lib/format";
+import { todayLocal } from "@/lib/format";
 import { MovementForm } from "@/components/MovementForm";
 import { NoAccess } from "@/components/NoAccess";
 import { create } from "../actions";
@@ -30,7 +30,7 @@ export default async function NewMovementPage({ searchParams }: { searchParams: 
             kinds={kinds}
             initialPartnerId={partners.some((p) => p.id === sp.partner) ? sp.partner : undefined}
             initialKind={kind}
-            today={isoDate(new Date())}
+            today={todayLocal()}
           />
         </div>
       )}

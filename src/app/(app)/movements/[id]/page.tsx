@@ -6,6 +6,7 @@ import { orNotFound } from "@/lib/page";
 import { getT } from "@/lib/i18n/server";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
+import { directionKey } from "@/lib/direction";
 import { ActionForm } from "@/components/ActionForm";
 import { CorrectionForm } from "@/components/CorrectionForm";
 import { accept, cancel, confirm, counter, dispute } from "../actions";
@@ -47,7 +48,7 @@ export default async function MovementDetail({
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="muted">{t("common.partner")}</dt><dd className="font-medium">{m.partnerName}</dd></div>
           <div><dt className="muted">{t("common.date")}</dt><dd>{formatDate(m.date, locale)}</dd></div>
-          <div><dt className="muted">{t("movementDetail.direction")}</dt><dd>{m.direction === "OUT" ? t("movementDetail.out") : t("movementDetail.in")}</dd></div>
+          <div><dt className="muted">{t("movementDetail.direction")}</dt><dd>{t(directionKey(m.kind, m.direction))}</dd></div>
           <div><dt className="muted">{t("movementForm.deliveryNote")}</dt><dd>{m.deliveryNote ?? "–"}</dd></div>
           <div><dt className="muted">{t("movementDetail.createdBy")}</dt><dd>{m.iAmCreator ? t("movementDetail.us") : m.partnerName}</dd></div>
           {m.note && <div className="sm:col-span-2"><dt className="muted">{t("movementForm.note")}</dt><dd>{m.note}</dd></div>}
@@ -129,6 +130,7 @@ export default async function MovementDetail({
         </section>
       )}
 
+      {m.status === "PROPOSED" && !m.iAmCreator && !m.can.confirm && <p className="alert-warn">{t("movementDetail.officeConfirms")}</p>}
       {m.status === "DISPUTED" && open && !m.can.resolve && (
         <p className="alert-warn">{open.byMe ? t("movementDetail.waitingPartnerDecision") : t("movementDetail.needsOffice")}</p>
       )}

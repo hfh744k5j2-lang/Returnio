@@ -130,7 +130,7 @@
     "RETURN": "Return",
     "LOSS": "Loss",
     "DAMAGE": "Damage",
-    "CORRECTION": "Correction"
+    "CORRECTION": "Balance adjustment"
   },
   "balances": {
     "empty": "No balance yet.",
@@ -147,7 +147,9 @@
     "number": "Count (pcs)",
     "depositValue": "Deposit value",
     "exportCsv": "Export balance (CSV)",
-    "pendingHelp": "“Awaiting confirmation” shows how the balance will change once confirmed (for disputes, according to the current correction proposal)."
+    "pendingHelp": "“Awaiting confirmation” shows how the balance will change once confirmed (for disputes, according to the current correction proposal).",
+    "pendingChange": "{n} once confirmed",
+    "asOfNote": "The balance as of a date counts movements dated up to that day, using their current confirmation status."
   },
   "movements": {
     "empty": "No movements yet.",
@@ -270,10 +272,11 @@
     "owner": "{owner}'s packaging",
     "count": "Count",
     "deliveryNote": "Delivery note no.",
-    "note": "Note",
+    "note": "Note (visible to the partner)",
     "saving": "Saving…",
     "submit": "Save {kind}",
-    "afterSave": "After saving, the partner confirms the movement. It counts in the balance only after confirmation."
+    "afterSave": "After saving, the partner confirms the movement. It counts in the balance only after confirmation.",
+    "negative": "Quantity cannot be negative."
   },
   "movementDetail": {
     "created": "Movement {number} saved. Waiting for partner confirmation.",
@@ -284,7 +287,7 @@
     "createdBy": "Recorded by",
     "us": "Us",
     "proposed": "Recorded",
-    "final": "Final",
+    "final": "Confirmed",
     "disputeHistory": "Dispute and correction proposals",
     "weProposed": "Our proposal",
     "partnerProposed": "Proposal by {partner}",
@@ -303,10 +306,11 @@
     "waitingPartner": "Waiting for partner confirmation.",
     "waitingPartnerEmail": "The partner received an email with a confirmation link.",
     "cancel": "Cancel movement (recorded by mistake)",
-    "history": "History"
+    "history": "History",
+    "officeConfirms": "Losses, damage and balance adjustments are confirmed by your logistics user or admin."
   },
   "correction": {
-    "wasProposed": "recorded {n} pcs",
+    "wasProposed": "proposed {n} pcs",
     "realCount": "Actual count {name}",
     "reason": "Reason",
     "reasonPlaceholder": "e.g. 2 pallets short, 1 broken"
@@ -317,7 +321,17 @@
     "SUPERSEDED": "replaced by another proposal"
   },
   "partnerLink": {
-    "yourName": "Your name"
+    "yourName": "Your name",
+    "invalidTitle": "The link is no longer valid",
+    "invalidText": "The link was already used, expired, or the movement was cancelled. If you are registered, sign in to ObalBook.",
+    "title": "{company} asks you to confirm a packaging movement",
+    "resolveTitle": "{company} proposes corrected counts",
+    "toYou": "from {company} to you",
+    "fromYou": "from you to {company}",
+    "proposedNow": "Proposed",
+    "theirReason": "Reason",
+    "nothingToDo": "Nothing needs to be done for this movement now.",
+    "registerHint": "Want to see the balance and all movements? Registration is free for partners – use the link from the invitation."
   },
   "audit": {
     "actions": {
@@ -330,5 +344,25 @@
         "cancelled": "cancelled"
       }
     }
+  },
+  "scan": {
+    "title": "Scan packaging",
+    "stepPartner": "Partner",
+    "stepKind": "What are you doing?",
+    "stepItems": "Packaging and counts",
+    "scanPartner": "Scan partner QR",
+    "scanType": "Scan packaging QR",
+    "orChoose": "or choose from the list",
+    "change": "Change",
+    "minus": "Less {name}",
+    "plus": "More {name}",
+    "enterCounts": "Enter quantities",
+    "save": "Save {kind}: {n} pcs",
+    "cameraTitle": "Camera",
+    "pointCamera": "Point at the QR code",
+    "cameraError": "Could not start the camera. Allow camera access in your browser or choose from the list.",
+    "unknownCode": "This QR code is not an ObalBook code.",
+    "unknownPartner": "This QR code belongs to a partner your company does not have.",
+    "typeNotForPartner": "This packaging belongs neither to you nor to the selected partner."
   }
 }
