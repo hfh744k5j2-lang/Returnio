@@ -8,7 +8,7 @@ async function as(context: BrowserContext, userId: string) {
 
 async function recordIssue(page: Page, partnerId: string, typeName: string, qty: number, dl: string) {
   await page.goto("/movements/new");
-  await page.getByLabel("Partner").selectOption(partnerId);
+  await page.getByLabel("Partner", { exact: true }).selectOption(partnerId);
   await page.getByLabel(`Počet ${typeName}`).fill(String(qty));
   await page.getByLabel("Číslo dodacího listu").fill(dl);
   await page.getByRole("button", { name: /Uložit výdej/ }).click();
