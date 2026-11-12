@@ -3,19 +3,21 @@ import { PrismaClient } from "@prisma/client";
 import { loadTestEnv } from "./load-env";
 
 /**
- * Připraví testovací databázi: aplikuje migrace a vyprázdní tabulky.
+ * Připraví čistou testovací databázi: zahodí schéma `public` a aplikuje všechny migrace.
  * Pojistka: běží jen nad databází, jejíž název končí na "_test".
  */
 export async function resetTestDb() {
   const env = { ...process.env, ...loadTestEnv() };
   const url = env.DATABASE_URL ?? "";
   if (!/\/[^/?]+_test(\?|$)/.test(url)) throw new Error(`Odmítám čistit databázi, která není testovací: ${url}`);
-  execSync("npx prisma migrate deploy", { stdio: "pipe", env });
   const db = new PrismaClient({ datasources: { db: { url } } });
-  const tables = await db.$queryRaw<{ tablename: string }[]>`
-    SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
-  if (tables.length) {
-    await db.$executeRawUnsafe(`TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(", ")} RESTART IDENTITY CASCADE`);
-  }
+  await db.$executeRawUnsafe(`DROP SCHEMA IF EXISTS public CASCADE`);
+  await db.$executeRawUnsafe(`CREATE SCHEMA public`);
   await db.$disconnect();
+  try {
+    execSync("npx prisma migrate deploy", { stdio: "pipe", env });
+  } catch (e) {
+    const err = e as { stdout?: Buffer; stderr?: Buffer };
+    throw new Error(`migrate deploy selhal:\n${err.stdout?.toString()}\n${err.stderr?.toString()}`);
+  }
 }

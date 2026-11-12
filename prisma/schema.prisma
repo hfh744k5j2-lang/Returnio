@@ -192,8 +192,8 @@ model PackagingType {
 
 model Movement {
   id              String               @id @default(cuid())
-  /// Lidsky čitelné pořadové číslo pohybu (zobrazuje se jako P-000123).
-  number          Int                  @default(autoincrement())
+  /// Pořadové číslo pohybu v rámci partnerství (P-000123). Číslování není globální, aby neprozrazovalo objem jiných firem.
+  number          Int
   partnershipId   String
   partnership     Partnership          @relation(fields: [partnershipId], references: [id])
   kind            MovementKind
@@ -216,6 +216,7 @@ model Movement {
   corrections     MovementCorrection[]
   partnerLinks    PartnerLinkToken[]
 
+  @@unique([partnershipId, number])
   @@index([partnershipId, status])
   @@index([date])
 }
@@ -226,6 +227,9 @@ model MovementLine {
   movement        Movement      @relation(fields: [movementId], references: [id])
   packagingTypeId String
   packagingType   PackagingType @relation(fields: [packagingTypeId], references: [id])
+  /// Snímek vlastností typu v okamžiku zápisu – výkaz PPWR se zpětně nemění při úpravě typu.
+  weightKg        Decimal       @db.Decimal(10, 3)
+  reusable        Boolean
   /// Počet navržený autorem.
   quantity        Int
   /// Počet platný po potvrzení (případně po vyřešení rozporu). Saldo počítá s tímto číslem.

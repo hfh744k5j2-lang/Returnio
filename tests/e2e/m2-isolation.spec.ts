@@ -15,17 +15,19 @@ async function setup() {
   const pCD = await createPartnership(c.company.id, d.company.id);
   const tA = await createPackaging(a.company.id, "ISOA");
   const tC = await createPackaging(c.company.id, "ISOC");
+  let seq = 0;
   const mk = (partnershipId: string, typeId: string, status: "PROPOSED" | "CONFIRMED" | "DISPUTED") =>
     db.movement.create({
       data: {
         partnershipId,
+        number: ++seq,
         kind: "ISSUE",
         createdBySide: "A",
         fromSide: "A",
         date: new Date(),
         status,
         deliveryNote: partnershipId === pCD.id ? "DL-SECRET-CD" : "DL-AB",
-        lines: { create: [{ packagingTypeId: typeId, quantity: 9, finalQuantity: status === "CONFIRMED" ? 9 : null }] },
+        lines: { create: [{ packagingTypeId: typeId, quantity: 9, weightKg: 25, reusable: true, finalQuantity: status === "CONFIRMED" ? 9 : null }] },
       },
     });
   const mAB = await mk(pAB.id, tA.id, "CONFIRMED");

@@ -3,6 +3,12 @@ import type { EmailConfig } from "next-auth/providers";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
 import { sendEmail } from "./email";
+import { appUrl } from "./tokens";
+
+export function rebaseToAppUrl(raw: string): string {
+  const u = new URL(raw);
+  return appUrl(u.pathname + u.search);
+}
 
 const emailProvider: EmailConfig = {
   id: "email",
@@ -11,7 +17,9 @@ const emailProvider: EmailConfig = {
   from: process.env.EMAIL_FROM || "ObalBook <noreply@example.com>",
   maxAge: 60 * 60, // odkaz platí 1 hodinu
   options: {},
-  async sendVerificationRequest({ identifier, url }) {
+  async sendVerificationRequest({ identifier, url: rawUrl }) {
+    // Odkaz vždy na APP_URL – nikdy podle hlavičky Host/X-Forwarded-Host požadavku (ochrana proti podvržení).
+    const url = rebaseToAppUrl(rawUrl);
     await sendEmail({
       to: identifier,
       subject: "Přihlášení do ObalBook / Sign in to ObalBook",

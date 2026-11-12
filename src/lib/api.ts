@@ -8,10 +8,10 @@ type Handler<P> = (ctx: Ctx, req: NextRequest, params: P) => Promise<unknown>;
  * Obal API endpointu: ověří přihlášení, u zápisů ochranu proti CSRF (JSON + stejný původ),
  * a převede chyby služeb na HTTP kódy.
  */
-export function api<P = Record<string, string>>(handler: Handler<P>) {
+export function api<P = Record<string, string>>(handler: Handler<P>, opts: { allowMultipart?: boolean } = {}) {
   return async (req: NextRequest, context: { params: Promise<P> }) => {
     try {
-      if (req.method !== "GET" && req.method !== "HEAD") assertSameOrigin(req);
+      if (req.method !== "GET" && req.method !== "HEAD") assertSameOrigin(req, opts.allowMultipart);
       const ctx = await requireApiCtx();
       const result = await handler(ctx, req, (await context.params) ?? ({} as P));
       if (result instanceof Response) return result;
@@ -24,14 +24,22 @@ export function api<P = Record<string, string>>(handler: Handler<P>) {
   };
 }
 
-function assertSameOrigin(req: NextRequest) {
+function assertSameOrigin(req: NextRequest, allowMultipart = false) {
   const ct = req.headers.get("content-type") ?? "";
-  if (!ct.includes("application/json") && !ct.includes("multipart/form-data") && !ct.includes("text/csv"))
-    throw new AppError("VALIDATION", "Očekávám JSON.");
+  const okType = ct.includes("application/json") || (allowMultipart && ct.includes("multipart/form-data"));
+  if (!okType) throw new AppError("VALIDATION", "Očekávám JSON.");
+  const site = req.headers.get("sec-fetch-site");
+  if (site && site !== "same-origin" && site !== "none") throw new AppError("FORBIDDEN", "Neplatný původ požadavku.");
   const origin = req.headers.get("origin");
   if (origin) {
     const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-    if (!host || new URL(origin).host !== host) throw new AppError("FORBIDDEN", "Neplatný původ požadavku.");
+    let originHost = "";
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      throw new AppError("FORBIDDEN", "Neplatný původ požadavku.");
+    }
+    if (!host || originHost !== host) throw new AppError("FORBIDDEN", "Neplatný původ požadavku.");
   }
 }
 

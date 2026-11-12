@@ -8,6 +8,7 @@ import { listPackagingTypes } from "@/lib/services/packaging";
 import { getT } from "@/lib/i18n/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate } from "@/lib/format";
+import { BalanceCell } from "@/components/BalanceText";
 
 export default async function DashboardPage() {
   const ctx = await requireCtx();
@@ -19,13 +20,6 @@ export default async function DashboardPage() {
     listPartners(ctx),
     listPackagingTypes(ctx),
   ]);
-  const byPartner = new Map<string, { name: string; confirmed: number; pending: number }>();
-  for (const r of balances.rows) {
-    const e = byPartner.get(r.partnershipId) ?? { name: r.partnerName, confirmed: 0, pending: 0 };
-    e.confirmed += r.confirmed;
-    e.pending += r.pending;
-    byPartner.set(r.partnershipId, e);
-  }
   const tiles = [
     { label: t("dashboard.toConfirm"), value: counters.toConfirm, href: "/movements?awaiting=me", tone: "text-amber-700" },
     { label: t("dashboard.disputesForMe"), value: counters.disputesForMe, href: "/movements?awaiting=dispute", tone: "text-red-700" },
@@ -68,23 +62,25 @@ export default async function DashboardPage() {
             <h2 className="h2">{t("dashboard.balanceByPartner")}</h2>
             <Link href="/balances" className="text-sm text-brand-700 underline">{t("common.detail")}</Link>
           </div>
-          {byPartner.size === 0 ? (
+          {balances.rows.length === 0 ? (
             <p className="muted">{t("balances.empty")}</p>
           ) : (
             <table className="table">
-              <thead><tr><th>{t("common.partner")}</th><th className="text-right">{t("balances.confirmed")}</th><th className="text-right">{t("balances.pending")}</th></tr></thead>
+              <thead><tr><th>{t("common.partner")}</th><th>{t("packaging.type")}</th><th>{t("balances.confirmed")}</th></tr></thead>
               <tbody>
-                {[...byPartner.entries()].map(([id, e]) => (
-                  <tr key={id}>
-                    <td><Link className="hover:underline" href={`/balances?partner=${id}`}>{e.name}</Link></td>
-                    <td className="text-right font-semibold tabular-nums">{e.confirmed}</td>
-                    <td className="text-right tabular-nums text-slate-500">{e.pending ? (e.pending > 0 ? `+${e.pending}` : e.pending) : "–"}</td>
+                {balances.rows.slice(0, 12).map((r) => (
+                  <tr key={r.partnershipId + r.packagingTypeId}>
+                    <td><Link className="hover:underline" href={`/balances?partner=${r.partnershipId}`}>{r.partnerName}</Link></td>
+                    <td>{r.typeName}</td>
+                    <td>
+                      <BalanceCell t={t} n={r.confirmed} />
+                      {r.pending !== 0 && <span className="block text-xs text-slate-500">{t("balances.pendingShort", { n: r.pending > 0 ? `+${r.pending}` : r.pending })}</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-          <p className="muted mt-3">{t("balances.signHelp")}</p>
         </section>
 
         <section className="card">

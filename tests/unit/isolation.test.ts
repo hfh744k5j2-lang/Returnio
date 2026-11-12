@@ -27,7 +27,7 @@ async function expectNotFound(p: Promise<unknown>) {
 }
 
 async function connect(x: Ctx, y: Ctx) {
-  const { url } = await partners.invitePartner(x, { name: "Partner", email: `p-${y.companyId}@example.com` });
+  const { url } = await partners.invitePartner(x, { name: "Partner", email: y.email });
   await partners.acceptPartnerInvite(y, url.split("/partner-invite/")[1]);
   const p = await prisma.partnership.findFirstOrThrow({ where: { companyAId: x.companyId, companyBId: y.companyId } });
   return p.id;
@@ -112,6 +112,23 @@ describe("typy obalů", () => {
     expect(ids).toEqual([typeA, typeB].sort());
     await expectNotFound(packaging.listTypesForPartnership(A, pCD));
   });
+  it("skladník nemůže přijmout pozvánku partnera; pozvánku přijme jen jedna firma", async () => {
+    const X = await makeCompany("Firma X");
+    const Xsklad = await addMember(X, "SKLAD");
+    const Y = await makeCompany("Firma Y");
+    const { url } = await partners.invitePartner(C, { name: "Pozvaný", email: X.email });
+    const token = url.split("/partner-invite/")[1];
+    expect((await partners.findPartnerInvite(token))?.companyAId).toBe(C.companyId);
+    await expect(partners.acceptPartnerInvite(Xsklad, token)).rejects.toThrow(/oprávnění/);
+    // přeposlaný odkaz: jiná firma s jiným e-mailem pozvánku nepřijme
+    await expect(partners.acceptPartnerInvite(Y, token)).rejects.toThrow(/určena pro/);
+    await expect(partners.acceptPartnerInvite(C, token)).rejects.toThrow(/vlastní firmy/);
+    await partners.acceptPartnerInvite(X, token);
+    await expect(partners.acceptPartnerInvite(X, token)).rejects.toThrow(/neplatná|použita/);
+    expect(await partners.findPartnerInvite(token)).toBeNull();
+    const p = await prisma.partnership.findFirstOrThrow({ where: { companyAId: C.companyId, invitedEmail: X.email } });
+    expect(p.companyBId).toBe(X.companyId);
+  });
   it("vytvoření typu jde vždy do vlastní firmy", async () => {
     const t = await packaging.createPackagingType(A, { name: "Test", code: "TST", weightKg: 1, reusable: false, companyId: C.companyId });
     expect(t.companyId).toBe(A.companyId);
@@ -123,8 +140,10 @@ describe("pohyby", () => {
     const all = await movements.listMovements(A, { pageSize: 500 });
     expect(all.items.map((m) => m.id).sort()).toEqual([mAB, mAU].sort());
     expect((await movements.listMovements(A, { partnershipId: pCD })).total).toBe(0);
+    // čísla jsou v rámci partnerství – hledání podle čísla vrátí jen vlastní pohyby
     const cd = await prisma.movement.findUniqueOrThrow({ where: { id: mCD } });
-    expect((await movements.listMovements(A, { q: String(cd.number) })).total).toBe(0);
+    const byNumber = await movements.listMovements(A, { q: String(cd.number) });
+    expect(byNumber.items.every((m) => [mAB, mAU].includes(m.id))).toBe(true);
     expect((await movements.listMovements(A, { q: "DL-CD-1" })).total).toBe(0);
     expect((await movements.listMovements(A, { status: "DISPUTED" })).total).toBe(0);
     expect((await movements.listAllMovements(A)).map((m) => m.id).sort()).toEqual([mAB, mAU].sort());
@@ -226,6 +245,15 @@ describe("auditní stopa", () => {
     expect(items.some((i) => i.entityId === pAU)).toBe(false);
     expect(items.some((i) => i.entityId === typeA)).toBe(false);
   });
+  it("B v auditních datech nenajde A-ho interní kód ani název partnera, ani e-maily zaměstnanců A", async () => {
+    await partners.updatePartner(A, pAB, { code: "TAJNYKOD" });
+    const p = await prisma.partnership.findUniqueOrThrow({ where: { id: pAB } });
+    const { items } = await audit.listAudit(B, { pageSize: 500 });
+    const json = JSON.stringify(items);
+    expect(json).not.toContain("TAJNYKOD");
+    expect(json).not.toContain(p.invitedName === "Partner" ? "invitedName" : p.invitedName);
+    expect(json).not.toContain(A.email);
+  });
   it("skladník auditní stopu nevidí", async () => {
     await expect(audit.listAudit(A_sklad)).rejects.toThrow(/oprávnění/);
   });
@@ -252,27 +280,70 @@ describe("firmy a uživatelé", () => {
  * Registr: každá exportovaná funkce služeb musí být v tomto souboru otestovaná, nebo výslovně vyjmutá.
  * Když někdo přidá novou funkci do služby, test selže a připomene doplnit test oddělení dat.
  */
+describe("jednorázové odkazy – platnost", () => {
+  async function tokenFor(email: string) {
+    const mail = await prisma.devEmail.findFirstOrThrow({ where: { to: email, text: { contains: "/p/" } }, orderBy: { createdAt: "desc" } });
+    return mail.text.match(/\/p\/([A-Za-z0-9_-]+)/)![1];
+  }
+  it("odkaz se váže na jeden pohyb a po zrušení pohybu přestane platit", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const m1 = await movements.createMovement(A, { partnershipId: pAU, kind: "ISSUE", date: today, lines: [{ packagingTypeId: typeA, quantity: 1 }] });
+    const t1 = await tokenFor("u-unreg@example.com");
+    const m2 = await movements.createMovement(A, { partnershipId: pAU, kind: "ISSUE", date: today, lines: [{ packagingTypeId: typeA, quantity: 2 }] });
+    const t2 = await tokenFor("u-unreg@example.com");
+    expect((await movements.findPartnerLink(t1))?.movement.id).toBe(m1.id);
+    await movements.actOnPartnerLink(t2, "confirm", { name: "Partner U" });
+    expect((await prisma.movement.findUniqueOrThrow({ where: { id: m1.id } })).status).toBe("PROPOSED");
+    expect((await prisma.movement.findUniqueOrThrow({ where: { id: m2.id } })).status).toBe("CONFIRMED");
+    await movements.cancelMovement(A, m1.id);
+    expect(await movements.findPartnerLink(t1)).toBeNull();
+  });
+  it("pohled přes odkaz je z pohledu partnera (strana B)", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    await movements.createMovement(A, { partnershipId: pAU, kind: "ISSUE", date: today, lines: [{ packagingTypeId: typeA, quantity: 1 }] });
+    const found = await movements.findPartnerLink(await tokenFor("u-unreg@example.com"));
+    expect(found?.view.mySide).toBe("B");
+    expect(found?.view.direction).toBe("IN");
+    expect(found?.view.can.confirm).toBe(true);
+  });
+  it("vypršený odkaz neplatí", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const m = await movements.createMovement(A, { partnershipId: pAU, kind: "ISSUE", date: today, lines: [{ packagingTypeId: typeA, quantity: 1 }] });
+    const t = await tokenFor("u-unreg@example.com");
+    await prisma.partnerLinkToken.updateMany({ where: { movementId: m.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    expect(await movements.findPartnerLink(t)).toBeNull();
+    await expect(movements.actOnPartnerLink(t, "confirm", { name: "Partner U" })).rejects.toThrow(/neplatný/);
+  });
+});
+
 describe("registr pokrytí služeb", () => {
   const EXEMPT = new Set([
-    // nepracují s daty konkrétní firmy (registrace / přijetí pozvánky přes token, pomocné funkce)
+    // nepracují s daty jedné firmy přes ctx (registrace; obal pro odesílání upozornění)
     "createCompanyForUser",
+    "suggestCode",
+    "safely",
+    // pozvánky kolegů – cizí firma → 404 / jiný e-mail, viz companies.test.ts
     "findInvitation",
     "acceptInvitation",
-    "changeUserRole", // cizí uživatel → 404, viz companies.test.ts
-    "removeUser", // viz companies.test.ts
     "inviteUser",
-    "findPartnerInvite",
-    "suggestCode",
-    "actOnPartnerLink",
+    "changeUserRole",
+    "removeUser",
   ]);
-  it("všechny funkce jsou pokryté", async () => {
-    const src = (await import("fs")).readFileSync(__filename, "utf8");
-    const modules = { companies, partners, packaging, movements, balance, audit };
+  it("všechny funkce ve všech souborech src/lib/services jsou pokryté", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const src = fs.readFileSync(__filename, "utf8") + fs.readdirSync(path.dirname(__filename))
+      .filter((f) => f.startsWith("isolation-") && f.endsWith(".test.ts"))
+      .map((f) => fs.readFileSync(path.join(path.dirname(__filename), f), "utf8"))
+      .join("\n");
+    const files = fs.readdirSync("src/lib/services").filter((f) => f.endsWith(".ts") && f !== "validate.ts");
     const missing: string[] = [];
-    for (const [modName, mod] of Object.entries(modules)) {
+    for (const file of files) {
+      const modName = file.replace(/\.ts$/, "");
+      const mod = await import(`@/lib/services/${modName}`);
       for (const [name, value] of Object.entries(mod)) {
         if (typeof value !== "function" || EXEMPT.has(name)) continue;
-        if (!src.includes(`${modName}.${name}(`)) missing.push(`${modName}.${name}`);
+        if (!src.includes(`.${name}(`)) missing.push(`${modName}.${name}`);
       }
     }
     expect(missing).toEqual([]);

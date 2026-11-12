@@ -30,12 +30,12 @@ async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string;
     ],
   };
   const pageSize = Math.min(Math.max(f.pageSize ?? 100, 1), 500);
-  const page = Math.max(f.page ?? 1, 1);
+  const page = Math.min(Math.max(f.page ?? 1, 1), 10_000);
   const [total, items] = await Promise.all([
     prisma.auditLog.count({ where }),
     prisma.auditLog.findMany({
       where,
-      include: { user: { select: { email: true, companyId: true } } },
+      include: { user: { select: { email: true, companyId: true, company: { select: { name: true } } } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -53,7 +53,12 @@ async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string;
       entityId: a.entityId,
       data: a.data,
       // uživatele z partnerské firmy ukazujeme jen e-mailem; neregistrovaného partnera jeho jménem
-      actor: a.user?.email ?? a.actorLabel ?? "systém",
+      // e-maily zaměstnanců partnera nezobrazujeme – jen název jejich firmy
+      actor: a.user
+        ? a.user.companyId === ctx.companyId
+          ? a.user.email
+          : (a.user.company?.name ?? "partner")
+        : (a.actorLabel ?? "systém"),
       ownCompany: a.user?.companyId === ctx.companyId,
     })),
   };

@@ -92,10 +92,15 @@ export async function inviteUser(ctx: Ctx, input: unknown) {
   const data = parse(inviteSchema, input);
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing?.companyId === ctx.companyId) throw conflict("Uživatel už je členem firmy.");
-  if (existing?.companyId) throw conflict("Tento e-mail už používá jiná firma.");
+  if (existing?.companyId) throw conflict("Tento e-mail nelze pozvat. Požádejte kolegu, ať použije jiný pracovní e-mail.");
   const { token, hash } = newToken();
   const company = await getCompany(ctx);
   const inv = await prisma.$transaction(async (tx) => {
+    // starší nevyřízené pozvánky na stejný e-mail zneplatníme
+    await tx.invitation.updateMany({
+      where: { companyId: ctx.companyId, email: data.email, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     const inv = await tx.invitation.create({
       data: {
         companyId: ctx.companyId,
@@ -130,7 +135,9 @@ export async function inviteUser(ctx: Ctx, input: unknown) {
 
 export async function revokeInvitation(ctx: Ctx, invitationId: string) {
   assertCan(ctx.role, "users.manage");
-  const inv = await prisma.invitation.findFirst({ where: { id: invitationId, companyId: ctx.companyId } });
+  const inv = await prisma.invitation.findFirst({
+    where: { id: invitationId, companyId: ctx.companyId, acceptedAt: null, revokedAt: null },
+  });
   if (!inv) throw notFound("Pozvánka");
   await prisma.$transaction(async (tx) => {
     await tx.invitation.update({ where: { id: inv.id }, data: { revokedAt: new Date() } });
@@ -160,7 +167,8 @@ export async function acceptInvitation(userId: string, token: string) {
       throw forbidden("Pozvánka je určena pro jiný e-mail.");
     if (user.companyId) throw conflict("Už patříte k jiné firmě.");
     await tx.user.update({ where: { id: userId }, data: { companyId: inv.companyId, role: inv.role } });
-    await tx.invitation.update({ where: { id: inv.id }, data: { acceptedAt: new Date() } });
+    const r = await tx.invitation.updateMany({ where: { id: inv.id, acceptedAt: null, revokedAt: null }, data: { acceptedAt: new Date() } });
+    if (r.count !== 1) throw invalid("Pozvánka už byla použita.");
     await audit(tx, {
       actor: { userId },
       companyId: inv.companyId,

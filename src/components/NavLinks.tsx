@@ -2,10 +2,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function NavLinks({ items }: { items: { href: string; label: string }[] }) {
+export function NavLinks({ items, label }: { items: { href: string; label: string }[]; label: string }) {
   const path = usePathname();
   return (
-    <nav className="mx-auto max-w-6xl overflow-x-auto px-2" aria-label="Hlavní menu">
+    <nav className="mx-auto max-w-6xl overflow-x-auto px-2" aria-label={label}>
       <ul className="flex gap-1 whitespace-nowrap pb-1">
         {items.map((i) => {
           const active = path === i.href || path.startsWith(i.href + "/");

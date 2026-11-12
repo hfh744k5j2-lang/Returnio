@@ -14,7 +14,8 @@
     "yes": "Ano",
     "no": "Ne",
     "pcs": "ks",
-    "none": "–"
+    "none": "–",
+    "edit": "Upravit"
   },
   "nav": {
     "dashboard": "Přehled",
@@ -27,7 +28,8 @@
     "ppwr": "Výkaz PPWR",
     "audit": "Historie změn",
     "settings": "Nastavení",
-    "signOut": "Odhlásit"
+    "signOut": "Odhlásit",
+    "menu": "Hlavní menu"
   },
   "roles": {
     "ADMIN": "Admin",
@@ -50,7 +52,8 @@
     "newCompany": "Nová firma? Přihlaste se stejně – po prvním přihlášení firmu zaregistrujete.",
     "error": "Přihlášení se nepodařilo nebo odkaz vypršel. Zkuste to znovu.",
     "checkTitle": "Zkontrolujte e-mail",
-    "checkText": "Poslali jsme vám přihlašovací odkaz. Platí 1 hodinu."
+    "checkText": "Poslali jsme vám přihlašovací odkaz. Platí 1 hodinu.",
+    "checkDevice": "Odkaz otevřete na zařízení, kde se chcete přihlásit (např. v telefonu)."
   },
   "onboarding": {
     "title": "Registrace firmy",
@@ -82,7 +85,8 @@
     "registerAndAccept": "Zaregistrovat firmu a přijmout",
     "asCompany": "Přijmout jako firma {company}.",
     "accept": "Přijmout pozvánku",
-    "needRole": "Pozvánku může přijmout jen admin nebo logistik vaší firmy."
+    "needRole": "Pozvánku může přijmout jen admin nebo logistik vaší firmy.",
+    "wrongEmail": "Pozvánka je pro {email}. Odhlaste se a přihlaste se tímto e-mailem."
   },
   "settings": {
     "title": "Nastavení",
@@ -131,9 +135,71 @@
     "empty": "Zatím žádné saldo.",
     "confirmed": "Potvrzené saldo",
     "pending": "Čeká na potvrzení",
-    "signHelp": "Kladné číslo = partner má naše obaly (dluží nám). Záporné = my máme obaly partnera."
+    "signHelp": "Kladné číslo = partner má naše obaly (dluží nám). Záporné = my máme obaly partnera.",
+    "title": "Saldo",
+    "partnerOwes": "Partner nám dluží {n} ks",
+    "weOwe": "Dlužíme partnerovi {n} ks",
+    "settled": "Vyrovnáno",
+    "pendingShort": "{n} ks čeká na potvrzení"
   },
   "movements": {
     "empty": "Zatím žádné pohyby."
+  },
+  "errors": {
+    "notFoundTitle": "Stránka nenalezena",
+    "notFoundText": "Stránka neexistuje, nebo k ní nemáte přístup.",
+    "backHome": "Zpět na přehled",
+    "noAccessTitle": "Nemáte přístup",
+    "noAccessText": "Tuto stránku může používat jen admin nebo logistik. Požádejte je o pomoc."
+  },
+  "partners": {
+    "title": "Partneři",
+    "empty": "Zatím nemáte žádné partnery. Pozvěte firmu, se kterou si posíláte obaly.",
+    "name": "Název partnera",
+    "email": "E-mail partnera",
+    "code": "Kód",
+    "codeOptional": "Kód (nepovinný)",
+    "state": "Stav",
+    "registered": "Registrovaný",
+    "notRegistered": "Neregistrovaný – potvrzuje přes e-mail",
+    "inviteTitle": "Pozvat partnera",
+    "inviteHelp": "Partner dostane e-mail. Může se zdarma zaregistrovat, nebo potvrzovat pohyby přes odkazy v e-mailu bez registrace.",
+    "inviteSubmit": "Poslat pozvánku",
+    "inviteSent": "Pozvánka odeslána.",
+    "movements": "Pohyby s partnerem",
+    "qrTitle": "QR kód partnera",
+    "qrHelp": "Vytiskněte a nalepte u rampy. Skladník ho naskenuje a rovnou zapisuje pohyb s tímto partnerem.",
+    "edit": "Upravit partnera",
+    "pendingHelp": "Partner se zatím nezaregistroval. Pozvánka šla na {email}.",
+    "resend": "Poslat pozvánku znovu"
+  },
+  "packaging": {
+    "title": "Typy obalů",
+    "type": "Obal",
+    "empty": "Zatím žádné typy obalů. Přidejte první (např. EUR paleta).",
+    "name": "Název",
+    "namePlaceholder": "např. EUR paleta",
+    "code": "Kód",
+    "material": "Materiál",
+    "materialPlaceholder": "dřevo, plast…",
+    "weightKg": "Hmotnost (kg)",
+    "deposit": "Kauce",
+    "currency": "Měna",
+    "reusable": "Vratný obal",
+    "active": "Aktivní (nabízet ve formulářích)",
+    "inactive": "neaktivní",
+    "reusableHelp": "Nevratné obaly (např. kartony) evidujte také – jsou potřeba pro výpočet podílu vratných obalů ve výkazu PPWR.",
+    "add": "Přidat typ obalu",
+    "addSubmit": "Přidat",
+    "added": "Typ obalu přidán.",
+    "editTitle": "Upravit obal {code}",
+    "editWarning": "Změna hmotnosti nebo vratnosti platí jen pro nové pohyby. Už zapsané pohyby si drží původní hodnoty."
+  },
+  "labels": {
+    "print": "Tisk štítku",
+    "printAll": "Tisk QR štítků",
+    "title": "QR štítky",
+    "printNow": "Vytisknout",
+    "help": "Štítky typů obalů nalepte na obaly nebo k regálu, štítky partnerů k rampě. Skladník je naskenuje telefonem na stránce Skenovat."
   }
 }

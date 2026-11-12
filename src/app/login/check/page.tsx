@@ -8,6 +8,7 @@ export default async function CheckEmailPage() {
         <div className="mb-3 text-4xl" aria-hidden>✉️</div>
         <h1 className="h1 mb-2">{t("login.checkTitle")}</h1>
         <p className="muted">{t("login.checkText")}</p>
+        <p className="muted mt-2">{t("login.checkDevice")}</p>
       </div>
     </main>
   );

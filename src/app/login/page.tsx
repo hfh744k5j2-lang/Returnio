@@ -4,12 +4,13 @@ import { getT } from "@/lib/i18n/server";
 import { ActionForm } from "@/components/ActionForm";
 import { LangSwitch } from "@/components/LangSwitch";
 import { requestMagicLink } from "./actions";
+import { safeNext } from "@/lib/safe-next";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
   const session = await auth();
-  const next = sp.next || sp.callbackUrl || "/dashboard";
-  if (session?.user) redirect(next.startsWith("/") ? next : "/dashboard");
+  const next = safeNext(sp.next || sp.callbackUrl);
+  if (session?.user) redirect(next);
   const { t } = await getT();
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10">

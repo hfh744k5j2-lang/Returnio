@@ -14,7 +14,8 @@
     "yes": "Yes",
     "no": "No",
     "pcs": "pcs",
-    "none": "–"
+    "none": "–",
+    "edit": "Edit"
   },
   "nav": {
     "dashboard": "Overview",
@@ -27,7 +28,8 @@
     "ppwr": "PPWR report",
     "audit": "Change history",
     "settings": "Settings",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "menu": "Main menu"
   },
   "roles": {
     "ADMIN": "Admin",
@@ -50,7 +52,8 @@
     "newCompany": "New company? Sign in the same way – you will register your company after the first sign-in.",
     "error": "Sign-in failed or the link expired. Please try again.",
     "checkTitle": "Check your email",
-    "checkText": "We have sent you a sign-in link. It is valid for 1 hour."
+    "checkText": "We have sent you a sign-in link. It is valid for 1 hour.",
+    "checkDevice": "Open the link on the device you want to sign in on (e.g. your phone)."
   },
   "onboarding": {
     "title": "Register your company",
@@ -82,7 +85,8 @@
     "registerAndAccept": "Register company and accept",
     "asCompany": "Accept as {company}.",
     "accept": "Accept invitation",
-    "needRole": "Only an admin or logistics user of your company can accept the invitation."
+    "needRole": "Only an admin or logistics user of your company can accept the invitation.",
+    "wrongEmail": "This invitation is for {email}. Sign out and sign in with that email."
   },
   "settings": {
     "title": "Settings",
@@ -131,9 +135,71 @@
     "empty": "No balance yet.",
     "confirmed": "Confirmed balance",
     "pending": "Awaiting confirmation",
-    "signHelp": "Positive = the partner holds our packaging (owes us). Negative = we hold the partner's packaging."
+    "signHelp": "Positive = the partner holds our packaging (owes us). Negative = we hold the partner's packaging.",
+    "title": "Balance",
+    "partnerOwes": "Partner owes us {n} pcs",
+    "weOwe": "We owe the partner {n} pcs",
+    "settled": "Settled",
+    "pendingShort": "{n} pcs awaiting confirmation"
   },
   "movements": {
     "empty": "No movements yet."
+  },
+  "errors": {
+    "notFoundTitle": "Page not found",
+    "notFoundText": "The page does not exist or you do not have access to it.",
+    "backHome": "Back to overview",
+    "noAccessTitle": "No access",
+    "noAccessText": "Only an admin or logistics user can use this page. Ask them for help."
+  },
+  "partners": {
+    "title": "Partners",
+    "empty": "No partners yet. Invite a company you exchange packaging with.",
+    "name": "Partner name",
+    "email": "Partner email",
+    "code": "Code",
+    "codeOptional": "Code (optional)",
+    "state": "Status",
+    "registered": "Registered",
+    "notRegistered": "Not registered – confirms via email",
+    "inviteTitle": "Invite a partner",
+    "inviteHelp": "The partner receives an email. They can register for free or confirm movements via email links without registering.",
+    "inviteSubmit": "Send invitation",
+    "inviteSent": "Invitation sent.",
+    "movements": "Movements with partner",
+    "qrTitle": "Partner QR code",
+    "qrHelp": "Print it and stick it at the loading dock. Warehouse staff scan it to record a movement with this partner.",
+    "edit": "Edit partner",
+    "pendingHelp": "The partner has not registered yet. The invitation was sent to {email}.",
+    "resend": "Resend invitation"
+  },
+  "packaging": {
+    "title": "Packaging types",
+    "type": "Packaging",
+    "empty": "No packaging types yet. Add the first one (e.g. EUR pallet).",
+    "name": "Name",
+    "namePlaceholder": "e.g. EUR pallet",
+    "code": "Code",
+    "material": "Material",
+    "materialPlaceholder": "wood, plastic…",
+    "weightKg": "Weight (kg)",
+    "deposit": "Deposit",
+    "currency": "Currency",
+    "reusable": "Reusable",
+    "active": "Active (offer in forms)",
+    "inactive": "inactive",
+    "reusableHelp": "Record one-way packaging (e.g. cartons) too – it is needed to calculate the reusable share in the PPWR report.",
+    "add": "Add packaging type",
+    "addSubmit": "Add",
+    "added": "Packaging type added.",
+    "editTitle": "Edit packaging {code}",
+    "editWarning": "Changes to weight or reusability apply to new movements only. Existing movements keep their original values."
+  },
+  "labels": {
+    "print": "Print label",
+    "printAll": "Print QR labels",
+    "title": "QR labels",
+    "printNow": "Print",
+    "help": "Stick packaging labels on the packaging or shelf, partner labels at the loading dock. Warehouse staff scan them with a phone on the Scan page."
   }
 }

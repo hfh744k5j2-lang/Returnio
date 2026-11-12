@@ -79,7 +79,19 @@ export async function createPackagingType(ctx: Ctx, input: unknown) {
 export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) {
   assertCan(ctx.role, "packaging.manage");
   const before = await getPackagingType(ctx, id);
-  const data = parse(packagingSchema, input);
+  // nezadaná pole zůstávají beze změny (PATCH)
+  const current = {
+    name: before.name,
+    code: before.code,
+    material: before.material ?? undefined,
+    weightKg: before.weightKg.toString(),
+    deposit: before.deposit?.toString(),
+    currency: before.currency,
+    reusable: before.reusable,
+    active: before.active,
+  };
+  const patch = Object.fromEntries(Object.entries((input ?? {}) as Record<string, unknown>).filter(([, v]) => v !== undefined));
+  const data = parse(packagingSchema, { ...current, ...patch });
   const clash = await prisma.packagingType.findFirst({
     where: { companyId: ctx.companyId, code: data.code, id: { not: id } },
   });
@@ -87,7 +99,7 @@ export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) 
   return prisma.$transaction(async (tx) => {
     const t = await tx.packagingType.update({
       where: { id: before.id },
-      data: { ...data, active: data.active ?? before.active, deposit: data.deposit ?? null },
+      data: { ...data, material: data.material ?? null, active: data.active ?? before.active, deposit: data.deposit ?? null },
     });
     await audit(tx, {
       actor: { userId: ctx.userId },

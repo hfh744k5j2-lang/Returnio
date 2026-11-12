@@ -93,6 +93,19 @@ function directionToFromSide(creator: Side, dir: Direction): Side {
 
 // ---------------------------------------------------------------- vytvoření
 
+function isUniqueViolation(e: unknown) {
+  return typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2002";
+}
+
+/** Upozornění po uložení: chyba odeslání se zaloguje, ale neshodí již provedenou akci. */
+export async function safely(fn: () => Promise<unknown>) {
+  try {
+    await fn();
+  } catch (e) {
+    console.error("[notify] odeslání upozornění selhalo", e);
+  }
+}
+
 export async function createMovement(ctx: Ctx, input: unknown, opts: { importBatchId?: string; tx?: Tx } = {}) {
   assertCan(ctx.role, "movements.create");
   const data = parse(createMovementSchema, input);
@@ -111,9 +124,13 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   });
   if (types.length !== data.lines.length) throw invalid("Neznámý nebo neaktivní typ obalu.");
 
+  const typeMap = new Map(types.map((t) => [t.id, t]));
   const run = async (tx: Tx) => {
+    // číslo v rámci partnerství; souběh řeší unikátní index + opakování níže
+    const last = await tx.movement.aggregate({ where: { partnershipId: p.id }, _max: { number: true } });
     const m = await tx.movement.create({
       data: {
+        number: (last._max.number ?? 0) + 1,
         partnershipId: p.id,
         kind: data.kind,
         createdBySide: side,
@@ -123,7 +140,14 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
         note: data.note || null,
         createdById: ctx.userId,
         importBatchId: opts.importBatchId ?? null,
-        lines: { create: data.lines.map((l) => ({ packagingTypeId: l.packagingTypeId, quantity: l.quantity })) },
+        lines: {
+          create: data.lines.map((l) => ({
+            packagingTypeId: l.packagingTypeId,
+            quantity: l.quantity,
+            weightKg: typeMap.get(l.packagingTypeId)!.weightKg,
+            reusable: typeMap.get(l.packagingTypeId)!.reusable,
+          })),
+        },
       },
       include: { lines: true },
     });
@@ -141,15 +165,26 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
         date: data.date.toISOString().slice(0, 10),
         deliveryNote: m.deliveryNote,
         lines: data.lines,
-        ...(opts.importBatchId ? { importBatchId: opts.importBatchId } : {}),
+        ...(opts.importBatchId ? { source: "import" } : {}),
       },
     });
     return m;
   };
-  const m = opts.tx ? await run(opts.tx) : await prisma.$transaction(run);
+  let m: Awaited<ReturnType<typeof run>> | undefined;
+  if (opts.tx) m = await run(opts.tx);
+  else {
+    for (let attempt = 0; !m; attempt++) {
+      try {
+        m = await prisma.$transaction(run);
+      } catch (e) {
+        if (attempt < 5 && isUniqueViolation(e)) continue;
+        throw e;
+      }
+    }
+  }
 
-  // Neregistrovaný partner dostane jednorázový odkaz k potvrzení.
-  if (!p.companyBId && !opts.tx) await sendPartnerLink(m.id);
+  // Neregistrovaný partner dostane jednorázový odkaz k potvrzení (chyba e-mailu pohyb nezruší).
+  if (!p.companyBId && !opts.tx) await safely(() => sendPartnerLink(m.id));
   return m;
 }
 
@@ -273,8 +308,8 @@ type MovementFull = Prisma.MovementGetPayload<{ include: typeof movementInclude 
 export type MovementView = ReturnType<typeof toMovementView>;
 
 /** Pohled na pohyb z pohledu firmy z kontextu (směr, partner, co smí udělat). */
-export function toMovementView(m: MovementFull, companyId: string, role: Role | null) {
-  const mySide = sideOf(m.partnership, companyId);
+export function toMovementView(m: MovementFull, companyId: string | null, role: Role | null, asSide?: Side) {
+  const mySide = asSide ?? sideOf(m.partnership, companyId ?? "");
   const partnerName =
     mySide === "A" ? (m.partnership.companyB?.name ?? m.partnership.invitedName) : m.partnership.companyA.name;
   const openCorrection = m.corrections.find((c) => c.status === "OPEN") ?? null;
@@ -334,7 +369,7 @@ export function toMovementView(m: MovementFull, companyId: string, role: Role | 
 
 export async function listMovements(ctx: Ctx, f: MovementFilters = {}) {
   const pageSize = Math.min(Math.max(f.pageSize ?? 50, 1), 500);
-  const page = Math.max(f.page ?? 1, 1);
+  const page = Math.min(Math.max(f.page ?? 1, 1), 10_000);
   const where = await buildWhere(ctx, f);
   const [total, rows] = await Promise.all([
     prisma.movement.count({ where }),
@@ -451,7 +486,7 @@ async function doDispute(m: MovementFull, a: Acting, input: unknown) {
     });
     return corr;
   });
-  await notifyDispute(m.id, corr.id, otherSide(a.side));
+  await safely(() => notifyDispute(m.id, corr.id, otherSide(a.side)));
   return corr;
 }
 
@@ -523,7 +558,7 @@ async function doCounter(m: MovementFull, a: Acting, input: unknown) {
     });
     return corr;
   });
-  await notifyDispute(m.id, corr.id, otherSide(a.side));
+  await safely(() => notifyDispute(m.id, corr.id, otherSide(a.side)));
   return corr;
 }
 
@@ -579,7 +614,8 @@ export async function findPartnerLink(token: string) {
   if (!link || link.usedAt || link.expiresAt < new Date()) return null;
   const m = await prisma.movement.findUnique({ where: { id: link.movementId }, include: movementInclude });
   if (!m || m.partnership.companyBId) return null; // registrovaný partner potvrzuje v aplikaci
-  return { link, movement: m, view: toMovementView(m, m.partnership.companyAId, null) };
+  // neregistrovaný partner je vždy strana B – pohled počítáme z jeho strany
+  return { link, movement: m, view: toMovementView(m, null, "SKLAD", "B") };
 }
 
 /**

@@ -35,5 +35,8 @@ export async function sendEmail(mail: Mail): Promise<void> {
     return;
   }
   if (process.env.EMAIL_SILENT === "1") return;
+  if (process.env.NODE_ENV === "production" && process.env.EMAIL_DEV_OUTBOX !== "1") {
+    throw new Error("E-mail není nakonfigurován: nastavte RESEND_API_KEY nebo SMTP_URL.");
+  }
   console.log(`\n[email] To: ${mail.to}\n[email] Subject: ${mail.subject}\n${mail.text}\n`);
 }

@@ -9,8 +9,8 @@ export type Ctx = { userId: string; companyId: string; role: Role; email: string
 
 export async function currentUser() {
   const session = await auth();
-  if (!session?.user?.email) return null;
-  return prisma.user.findUnique({ where: { email: session.user.email }, include: { company: true } });
+  if (!session?.user?.id) return null;
+  return prisma.user.findUnique({ where: { id: session.user.id }, include: { company: true } });
 }
 
 export async function getCtx(): Promise<Ctx | null> {

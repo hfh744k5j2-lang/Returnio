@@ -17,7 +17,7 @@ export type BalanceRow = {
   packagingTypeId: string;
   /** Potvrzené saldo. Kladné = partner má naše obaly (dluží nám). Záporné = máme obaly partnera. */
   confirmed: number;
-  /** Vliv dosud nepotvrzených pohybů (navržené + rozporované) – zobrazuje se zvlášť. */
+  /** Vliv dosud nepotvrzených pohybů – navržené podle navrženého počtu, rozporované podle aktuálního návrhu opravy. */
   pending: number;
 };
 
@@ -48,7 +48,14 @@ export async function loadAggregates(partnershipIds: string[], asOf?: Date): Pro
     { partnershipId: string; fromSide: Side; status: BalanceAggRow["status"]; packagingTypeId: string; qty: bigint }[]
   >(Prisma.sql`
     SELECT m."partnershipId", m."fromSide", m."status", l."packagingTypeId",
-           SUM(CASE WHEN m."status" = 'CONFIRMED' THEN COALESCE(l."finalQuantity", l."quantity") ELSE l."quantity" END) AS qty
+           SUM(CASE
+                 WHEN m."status" = 'CONFIRMED' THEN COALESCE(l."finalQuantity", l."quantity")
+                 WHEN m."status" = 'DISPUTED' THEN COALESCE((
+                   SELECT (e->>'quantity')::int
+                   FROM "MovementCorrection" c, jsonb_array_elements(c."lines") e
+                   WHERE c."movementId" = m."id" AND c."status" = 'OPEN' AND e->>'packagingTypeId' = l."packagingTypeId"
+                   LIMIT 1), l."quantity")
+                 ELSE l."quantity" END) AS qty
     FROM "MovementLine" l
     JOIN "Movement" m ON m."id" = l."movementId"
     WHERE m."partnershipId" IN (${Prisma.join(partnershipIds)})

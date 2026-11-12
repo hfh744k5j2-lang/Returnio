@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <SignOutButton label={t("nav.signOut")} />
           </div>
         </div>
-        <NavLinks items={items} />
+        <NavLinks items={items} label={t("nav.menu")} />
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
     </div>

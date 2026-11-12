@@ -6,6 +6,7 @@ import { acceptPartnerInvite, findPartnerInvite } from "@/lib/services/partners"
 import { formToObject } from "@/lib/services/validate";
 import { runAction, type ActionState } from "@/lib/actions";
 import { can } from "@/lib/permissions";
+import { AppError } from "@/lib/errors";
 import { getT } from "@/lib/i18n/server";
 import { ActionForm } from "@/components/ActionForm";
 import { CompanyFields } from "@/components/CompanyFields";
@@ -21,9 +22,10 @@ export default async function PartnerInvitePage({ params }: { params: Promise<{ 
     const u = await currentUser();
     if (!u) redirect(`/login?next=/partner-invite/${token}`);
     const res = await runAction(async () => {
+      if (!(await findPartnerInvite(token))) throw new AppError("VALIDATION", "Pozvánka partnera je neplatná nebo už byla použita.");
       if (!u.companyId) await createCompanyForUser(u.id, formToObject(fd));
       const ctx = await getCtx();
-      if (!ctx) throw new Error("no ctx");
+      if (!ctx) throw new AppError("VALIDATION", "Nejdřív zaregistrujte firmu.");
       await acceptPartnerInvite(ctx, token);
     });
     if (res?.error) return res;
@@ -39,11 +41,14 @@ export default async function PartnerInvitePage({ params }: { params: Promise<{ 
         ) : (
           <>
             <p>{t("partnerInvite.text", { company: invite.companyA.name })}</p>
+            {invite.companyA.regNumber && <p className="muted">{t("company.regNumber")}: {invite.companyA.regNumber}</p>}
             {!user ? (
               <>
                 <Link className="btn-primary w-full" href={`/login?next=/partner-invite/${token}`}>{t("partnerInvite.signIn")}</Link>
                 <p className="muted">{t("partnerInvite.noRegistration")}</p>
               </>
+            ) : user.email.toLowerCase() !== invite.invitedEmail.toLowerCase() ? (
+              <p className="alert-warn">{t("partnerInvite.wrongEmail", { email: invite.invitedEmail })}</p>
             ) : !user.companyId ? (
               <ActionForm action={registerAndAccept} className="space-y-4">
                 <p className="muted">{t("partnerInvite.createCompany")}</p>
