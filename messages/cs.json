@@ -140,10 +140,36 @@
     "partnerOwes": "Partner nám dluží {n} ks",
     "weOwe": "Dlužíme partnerovi {n} ks",
     "settled": "Vyrovnáno",
-    "pendingShort": "{n} ks čeká na potvrzení"
+    "pendingShort": "{n} ks čeká na potvrzení",
+    "intro": "Saldo počítáme jen z potvrzených pohybů. Pohyby, které partner ještě nepotvrdil, jsou zvlášť ve sloupci „Čeká na potvrzení“.",
+    "asOf": "Ke dni",
+    "number": "Počet (ks)",
+    "depositValue": "Hodnota kaucí",
+    "exportCsv": "Export salda (CSV)",
+    "pendingHelp": "„Čeká na potvrzení“ ukazuje, o kolik se saldo změní po potvrzení (u rozporu podle aktuálního návrhu opravy)."
   },
   "movements": {
-    "empty": "Zatím žádné pohyby."
+    "empty": "Zatím žádné pohyby.",
+    "title": "Pohyby obalů",
+    "exportCsv": "Export (CSV)",
+    "awaiting": {
+      "me": "Čeká na mě",
+      "dispute": "Rozpory k vyřešení",
+      "partner": "Čeká na partnera"
+    },
+    "allPartners": "Všichni partneři",
+    "allStatuses": "Všechny stavy",
+    "allKinds": "Všechny druhy",
+    "status": "Stav",
+    "from": "Od",
+    "to": "Do",
+    "searchPlaceholder": "Číslo, dodací list…",
+    "number": "Číslo",
+    "items": "Obaly",
+    "toPartner": "od nás k partnerovi",
+    "fromPartner": "od partnera k nám",
+    "needsYou": "čeká na vás",
+    "page": "Strana {page} z {pages}"
   },
   "errors": {
     "notFoundTitle": "Stránka nenalezena",
@@ -201,5 +227,107 @@
     "title": "QR štítky",
     "printNow": "Vytisknout",
     "help": "Štítky typů obalů nalepte na obaly nebo k regálu, štítky partnerů k rampě. Skladník je naskenuje telefonem na stránce Skenovat."
+  },
+  "movementForm": {
+    "title": "Nový pohyb obalů",
+    "choosePartner": "– vyberte partnera –",
+    "choosePartnerFirst": "Nejdřív vyberte partnera.",
+    "noPartners": "Nemáte žádné partnery. Nejdřív pozvěte partnera na stránce Partneři.",
+    "noTypes": "Žádné typy obalů. Přidejte je na stránce Obaly.",
+    "kind": "Druh pohybu",
+    "kindHelp": {
+      "ISSUE": "Obaly odcházejí od nás k partnerovi (např. s vydaným zbožím).",
+      "RECEIPT": "Obaly přicházejí od partnera k nám (např. s přijatým zbožím).",
+      "RETURN": "Vrácení prázdných obalů – vyberte, kdo komu vrací.",
+      "LOSS": "Obaly se ztratily – odepíšou se ze salda.",
+      "DAMAGE": "Obaly jsou poškozené a nepoužitelné – odepíšou se ze salda.",
+      "CORRECTION": "Ruční oprava salda (např. po inventuře). Partner ji musí potvrdit."
+    },
+    "direction": {
+      "RETURN": {
+        "label": "Kdo vrací?",
+        "IN": "Partner vrací obaly nám",
+        "OUT": "My vracíme obaly partnerovi"
+      },
+      "LOSS": {
+        "label": "Kde se obaly ztratily?",
+        "IN": "U partnera (sníží, co nám partner dluží)",
+        "OUT": "U nás (sníží, co dlužíme partnerovi)"
+      },
+      "DAMAGE": {
+        "label": "Kde se obaly poškodily?",
+        "IN": "U partnera (sníží, co nám partner dluží)",
+        "OUT": "U nás (sníží, co dlužíme partnerovi)"
+      },
+      "CORRECTION": {
+        "label": "Jak upravit saldo?",
+        "IN": "Partner nám dluží méně",
+        "OUT": "Partner nám dluží více"
+      }
+    },
+    "quantities": "Počty kusů",
+    "owner": "obal firmy {owner}",
+    "count": "Počet",
+    "deliveryNote": "Číslo dodacího listu",
+    "note": "Poznámka",
+    "saving": "Ukládám…",
+    "submit": "Uložit {kind}",
+    "afterSave": "Po uložení pohyb potvrdí partner. Do salda se započítá až po potvrzení."
+  },
+  "movementDetail": {
+    "created": "Pohyb {number} uložen. Čeká na potvrzení partnerem.",
+    "scanNext": "Skenovat další",
+    "direction": "Směr",
+    "out": "Od nás k partnerovi",
+    "in": "Od partnera k nám",
+    "createdBy": "Zapsal",
+    "us": "My",
+    "proposed": "Zapsáno",
+    "final": "Platí",
+    "disputeHistory": "Rozpor a návrhy opravy",
+    "weProposed": "Náš návrh",
+    "partnerProposed": "Návrh partnera {partner}",
+    "yourTurn": "Souhlasí počty?",
+    "confirmHelp": "Přepočítejte obaly. Když souhlasí, potvrďte. Když ne, zadejte, kolik jich opravdu přišlo nebo odešlo.",
+    "confirm": "Ano, počty souhlasí – potvrdit",
+    "disputeOpen": "Ne, počty nesouhlasí",
+    "disputeSubmit": "Odeslat rozpor",
+    "resolveTitle": "Partner navrhuje opravu",
+    "resolveHelp": "{partner} nesouhlasí s počty. Přijměte jeho opravu, nebo navrhněte jiné počty.",
+    "acceptCorrection": "Přijmout opravu",
+    "counterOpen": "Navrhnout jiné počty",
+    "counterSubmit": "Odeslat návrh",
+    "waitingPartnerDecision": "Čekáme, až partner náš návrh opravy přijme nebo navrhne jiný.",
+    "needsOffice": "Rozpor vyřeší logistik nebo admin vaší firmy.",
+    "waitingPartner": "Čeká na potvrzení partnerem.",
+    "waitingPartnerEmail": "Partner dostal e-mail s odkazem na potvrzení.",
+    "cancel": "Zrušit pohyb (zapsán omylem)",
+    "history": "Historie"
+  },
+  "correction": {
+    "wasProposed": "zapsáno {n} ks",
+    "realCount": "Skutečný počet {name}",
+    "reason": "Důvod",
+    "reasonPlaceholder": "např. přišlo o 2 palety méně, 1 rozbitá"
+  },
+  "correctionStatus": {
+    "OPEN": "čeká na odpověď",
+    "ACCEPTED": "přijato",
+    "SUPERSEDED": "nahrazeno jiným návrhem"
+  },
+  "partnerLink": {
+    "yourName": "Vaše jméno"
+  },
+  "audit": {
+    "actions": {
+      "movement": {
+        "created": "pohyb zapsán",
+        "confirmed": "potvrzeno",
+        "disputed": "rozporováno",
+        "counter_proposed": "navržena jiná oprava",
+        "dispute_resolved": "rozpor vyřešen dohodou",
+        "cancelled": "zrušeno"
+      }
+    }
   }
 }

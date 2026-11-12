@@ -140,10 +140,36 @@
     "partnerOwes": "Partner owes us {n} pcs",
     "weOwe": "We owe the partner {n} pcs",
     "settled": "Settled",
-    "pendingShort": "{n} pcs awaiting confirmation"
+    "pendingShort": "{n} pcs awaiting confirmation",
+    "intro": "The balance only counts confirmed movements. Movements the partner has not confirmed yet are shown separately under “Awaiting confirmation”.",
+    "asOf": "As of",
+    "number": "Count (pcs)",
+    "depositValue": "Deposit value",
+    "exportCsv": "Export balance (CSV)",
+    "pendingHelp": "“Awaiting confirmation” shows how the balance will change once confirmed (for disputes, according to the current correction proposal)."
   },
   "movements": {
-    "empty": "No movements yet."
+    "empty": "No movements yet.",
+    "title": "Packaging movements",
+    "exportCsv": "Export (CSV)",
+    "awaiting": {
+      "me": "Waiting for me",
+      "dispute": "Disputes to resolve",
+      "partner": "Waiting for partner"
+    },
+    "allPartners": "All partners",
+    "allStatuses": "All statuses",
+    "allKinds": "All kinds",
+    "status": "Status",
+    "from": "From",
+    "to": "To",
+    "searchPlaceholder": "Number, delivery note…",
+    "number": "Number",
+    "items": "Packaging",
+    "toPartner": "from us to partner",
+    "fromPartner": "from partner to us",
+    "needsYou": "needs you",
+    "page": "Page {page} of {pages}"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -201,5 +227,107 @@
     "title": "QR labels",
     "printNow": "Print",
     "help": "Stick packaging labels on the packaging or shelf, partner labels at the loading dock. Warehouse staff scan them with a phone on the Scan page."
+  },
+  "movementForm": {
+    "title": "New packaging movement",
+    "choosePartner": "– choose partner –",
+    "choosePartnerFirst": "Choose a partner first.",
+    "noPartners": "You have no partners. Invite a partner on the Partners page first.",
+    "noTypes": "No packaging types. Add them on the Packaging page.",
+    "kind": "Movement kind",
+    "kindHelp": {
+      "ISSUE": "Packaging leaves us to the partner (e.g. with shipped goods).",
+      "RECEIPT": "Packaging arrives from the partner to us (e.g. with received goods).",
+      "RETURN": "Return of empty packaging – choose who returns to whom.",
+      "LOSS": "Packaging was lost – it is written off the balance.",
+      "DAMAGE": "Packaging is damaged and unusable – it is written off the balance.",
+      "CORRECTION": "Manual balance correction (e.g. after a stock count). The partner must confirm it."
+    },
+    "direction": {
+      "RETURN": {
+        "label": "Who returns?",
+        "IN": "Partner returns packaging to us",
+        "OUT": "We return packaging to the partner"
+      },
+      "LOSS": {
+        "label": "Where was the packaging lost?",
+        "IN": "At the partner (reduces what the partner owes us)",
+        "OUT": "At our site (reduces what we owe the partner)"
+      },
+      "DAMAGE": {
+        "label": "Where was the packaging damaged?",
+        "IN": "At the partner (reduces what the partner owes us)",
+        "OUT": "At our site (reduces what we owe the partner)"
+      },
+      "CORRECTION": {
+        "label": "How to adjust the balance?",
+        "IN": "Partner owes us less",
+        "OUT": "Partner owes us more"
+      }
+    },
+    "quantities": "Quantities",
+    "owner": "{owner}'s packaging",
+    "count": "Count",
+    "deliveryNote": "Delivery note no.",
+    "note": "Note",
+    "saving": "Saving…",
+    "submit": "Save {kind}",
+    "afterSave": "After saving, the partner confirms the movement. It counts in the balance only after confirmation."
+  },
+  "movementDetail": {
+    "created": "Movement {number} saved. Waiting for partner confirmation.",
+    "scanNext": "Scan next",
+    "direction": "Direction",
+    "out": "From us to the partner",
+    "in": "From the partner to us",
+    "createdBy": "Recorded by",
+    "us": "Us",
+    "proposed": "Recorded",
+    "final": "Final",
+    "disputeHistory": "Dispute and correction proposals",
+    "weProposed": "Our proposal",
+    "partnerProposed": "Proposal by {partner}",
+    "yourTurn": "Do the counts match?",
+    "confirmHelp": "Count the packaging. If it matches, confirm. If not, enter how many actually arrived or left.",
+    "confirm": "Yes, counts match – confirm",
+    "disputeOpen": "No, counts do not match",
+    "disputeSubmit": "Send dispute",
+    "resolveTitle": "Partner proposes a correction",
+    "resolveHelp": "{partner} disagrees with the counts. Accept the correction or propose different counts.",
+    "acceptCorrection": "Accept correction",
+    "counterOpen": "Propose different counts",
+    "counterSubmit": "Send proposal",
+    "waitingPartnerDecision": "Waiting for the partner to accept our correction or propose another.",
+    "needsOffice": "The dispute will be resolved by your logistics user or admin.",
+    "waitingPartner": "Waiting for partner confirmation.",
+    "waitingPartnerEmail": "The partner received an email with a confirmation link.",
+    "cancel": "Cancel movement (recorded by mistake)",
+    "history": "History"
+  },
+  "correction": {
+    "wasProposed": "recorded {n} pcs",
+    "realCount": "Actual count {name}",
+    "reason": "Reason",
+    "reasonPlaceholder": "e.g. 2 pallets short, 1 broken"
+  },
+  "correctionStatus": {
+    "OPEN": "awaiting reply",
+    "ACCEPTED": "accepted",
+    "SUPERSEDED": "replaced by another proposal"
+  },
+  "partnerLink": {
+    "yourName": "Your name"
+  },
+  "audit": {
+    "actions": {
+      "movement": {
+        "created": "movement recorded",
+        "confirmed": "confirmed",
+        "disputed": "disputed",
+        "counter_proposed": "counter-proposal",
+        "dispute_resolved": "dispute resolved by agreement",
+        "cancelled": "cancelled"
+      }
+    }
   }
 }

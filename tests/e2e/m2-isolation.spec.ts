@@ -131,3 +131,22 @@ test("M2: neplatné parametry vrací 400, ne 500", async ({ context }) => {
   expect((await context.request.get("/api/v1/balances?asOf=nesmysl")).status()).toBe(400);
   expect((await context.request.get("/api/v1/movements?status=HACK")).status()).toBe(400);
 });
+
+test("M2: stránky s cizím ID vrací 404 a neukážou cizí data", async ({ page, context }) => {
+  await loginAs(context, f.a.user.id);
+  for (const url of [`/movements/${f.mCD.id}`, `/partners/${f.pCD.id}`, `/packaging/${f.tC.id}`]) {
+    const res = await page.goto(url);
+    expect(res?.status(), url).toBe(404);
+    await expect(page.getByText("Stránka nenalezena")).toBeVisible();
+  }
+  for (const url of ["/movements", "/balances", "/partners", "/dashboard", `/movements?partner=${f.pCD.id}`, `/balances?partner=${f.pCD.id}`]) {
+    await page.goto(url);
+    // viditelný obsah + odkazy (ID v URL dotazu je vlastní vstup útočníka, ne únik)
+    const text = await page.locator("main").innerText();
+    const hrefs = (await page.locator("main a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).pathname))).join(" ");
+    for (const id of forbiddenIds()) {
+      expect(text, `${url} obsahuje ${id}`).not.toContain(id);
+      expect(hrefs, `${url} odkazuje na ${id}`).not.toContain(id);
+    }
+  }
+});

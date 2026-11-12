@@ -75,3 +75,15 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 **Testováno:** `npm run check` OK (53 unit testů). Playwright `m3-partners-packaging.spec.ts`: přidání vratného i nevratného typu, duplicitní kód → hláška, úprava hmotnosti (ověřeno v DB), skladník nemůže přidávat ani upravovat; pozvání partnera → cizí uživatel s přeposlaným odkazem odmítnut → partner se zaregistruje a přijme → obě strany vidí registrované partnerství, detail má QR kód.
 
 **Rozhodnutí:** typy obalů patří firmě; v pohybu lze použít typy obou stran partnerství (partner vrací naše palety, my jeho přepravky). Typy se nemažou, jen deaktivují.
+
+## M4 Pohyby a potvrzování – hotovo
+
+**Hotové:** formulář nového pohybu (partner, druh, směr u vrácení/ztráty/poškození/opravy s vysvětlením slovy, počty podle typů obou stran, datum, dodací list, poznámka), seznam pohybů s rychlými filtry (čeká na mě / rozpory k vyřešení / čeká na partnera), filtry partner/stav/druh/období/hledání, stránkování; detail pohybu: potvrzení protistranou, rozpor s opraveným počtem a důvodem, protinávrh, přijetí opravy (= schválení obou stran), zrušení navrženého pohybu autorem, historie změn; saldo po partnerech a typech jen z potvrzených pohybů, zvlášť „čeká na potvrzení“, saldo ke dni, hodnota kaucí. Číslování pohybů v rámci partnerství.
+
+**Testováno:** `npm run check` OK – `tests/unit/movements.test.ts`: číslování (i souběžně), snímek hmotnosti, výdej → potvrzení (zrcadlové saldo u obou stran), rozpor → protinávrh → přijetí (saldo s dohodnutým počtem, pořadí auditních záznamů), vrácení snižuje saldo, zrušený pohyb se nepočítá a nemaže, oprávnění skladníka, validace (0, 1,5, text, duplicitní typ, budoucí datum), jednorázový odkaz (potvrzení, opakované použití, rozpor → protinávrh firmy → přijetí novým odkazem). Playwright `m4-movements.spec.ts`: celý tok přes UI dvou firem a čtyř uživatelů (skladník A vydá 40, skladník B potvrdí; druhý výdej 40 → skladník B rozporuje 37 → admin A navrhne 38 → admin B přijme → saldo 78 u obou stran slovně); skladník nevidí zvláštní druhy, autor zruší navržený pohyb. `m2-isolation.spec.ts` rozšířen o stránky (cizí ID → 404, seznamy neukazují cizí data).
+
+**Rozhodnutí:**
+- Rozpor/potvrzení smí i skladník (počítá obaly na rampě); řešit rozpor (přijmout/protinávrh) smí jen admin a logistik.
+- Ztráta/poškození: uživatel volí, kde k ní došlo; „u partnera“ snižuje partnerův dluh (odpis), „u nás“ snižuje náš dluh. Kauce/fakturace ztrát je mimo MVP.
+- Opravit lze jen počty položek, které jsou v pohybu (nová položka = nový pohyb). Potvrzený pohyb se nemění; chyba se opraví pohybem „Oprava“.
+- Zrušit lze jen navržený pohyb (ne rozporovaný) – rozporovaný se řeší dohodou, i na 0 ks.
