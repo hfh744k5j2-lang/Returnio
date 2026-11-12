@@ -120,9 +120,10 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   // Typy obalů musí patřit jedné ze stran partnerství (žádné cizí ID).
   const companyIds = [p.companyAId, p.companyBId].filter((x): x is string => Boolean(x));
   const types = await prisma.packagingType.findMany({
-    where: { id: { in: data.lines.map((l) => l.packagingTypeId) }, companyId: { in: companyIds }, active: true },
+    // i neaktivní typ – jinak by nešlo vrátit obaly, které u partnera zůstaly
+    where: { id: { in: data.lines.map((l) => l.packagingTypeId) }, companyId: { in: companyIds } },
   });
-  if (types.length !== data.lines.length) throw invalid("Neznámý nebo neaktivní typ obalu.");
+  if (types.length !== data.lines.length) throw invalid("Neznámý typ obalu.");
 
   const typeMap = new Map(types.map((t) => [t.id, t]));
   const run = async (tx: Tx) => {
@@ -614,8 +615,9 @@ export async function findPartnerLink(token: string) {
   if (!link || link.usedAt || link.expiresAt < new Date()) return null;
   const m = await prisma.movement.findUnique({ where: { id: link.movementId }, include: movementInclude });
   if (!m || m.partnership.companyBId) return null; // registrovaný partner potvrzuje v aplikaci
-  // neregistrovaný partner je vždy strana B – pohled počítáme z jeho strany
-  return { link, movement: m, view: toMovementView(m, null, "SKLAD", "B") };
+  // neregistrovaný partner je vždy strana B – pohled počítáme z jeho strany. Jednající přes odkaz smí
+  // potvrdit, rozporovat i řešit rozpor (role se ho netýká) → pro výpočet `can` plná oprávnění.
+  return { link, movement: m, view: toMovementView(m, null, "ADMIN", "B") };
 }
 
 /**

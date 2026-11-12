@@ -12,7 +12,7 @@ export default async function LabelsPage({ searchParams }: { searchParams: Promi
   const ctx = await requireCtx();
   const { t } = await getT();
   const all = !sp.type && !sp.partner;
-  const types = (await listPackagingTypes(ctx)).filter((x) => all || x.id === sp.type);
+  const types = (await listPackagingTypes(ctx, { includeInactive: Boolean(sp.type) })).filter((x) => all || x.id === sp.type);
   const partners = (await listPartners(ctx)).filter((x) => all || x.id === sp.partner);
   return (
     <div className="space-y-4">

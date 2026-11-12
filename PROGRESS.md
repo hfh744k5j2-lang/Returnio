@@ -76,6 +76,16 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 
 **Rozhodnutí:** typy obalů patří firmě; v pohybu lze použít typy obou stran partnerství (partner vrací naše palety, my jeho přepravky). Typy se nemažou, jen deaktivují.
 
+**Revize (sub-agent, dokončena po commitu M3, opravy v M4 větvi) – 20 bodů:**
+- KRITICKÉ: nevratné obaly (kartony) se počítaly do salda → saldo jen z řádků se `reusable = true` (snímek); nevratné jen pro výkaz PPWR. Test.
+- E-mail neregistrovaného partnera nešel opravit → úprava e-mailu u nezaregistrovaného partnera; staré jednorázové odkazy i pozvánka se zneplatní, odejde nová pozvánka. Test.
+- Dvojí partnerství se stejnou firmou (zrcadlová pozvánka) → přijetí zablokováno s vysvětlením. Test.
+- Deaktivovaný typ nešel vrátit → v pohybech lze použít i neaktivní typ; ve formuláři se nabízí, pokud už byl v partnerství použit. Test.
+- Nešlo smazat kauci/materiál → `null` = smazat. Test.
+- Pohled přes jednorázový odkaz nedovolil řešit rozpor → oprávnění odkazu počítána zvlášť.
+- Hmotnost musí být > 0; API bez `reusable` = vratný; audit úprav typu ukládá kauci/měnu/materiál; `toView` nikdy neukáže straně B interní kód strany A; u salda všude vlastník typu a slovní vyjádření; migrace bezpečná i na neprázdné DB (doplní snímek z typu, přečísluje pohyby); QR neaktivního typu; e-mail z pozvánky se ověřuje před založením firmy.
+- Do dluhu: stejný obal definovaný oběma firmami (dva typy „EUR“) se nevyrovná – doporučení: obal definuje jeho vlastník, druhá strana používá jeho typ (formulář nabízí typy obou stran s vlastníkem); mapování ekvivalentních typů je mimo MVP. Maskování e-mailu na stránce pozvánky; `inviteUser` odpovídá jinak pro e-mail jiné firmy (zjistitelnost registrovaných e-mailů); česky natvrdo materiály v datalistu.
+
 ## M4 Pohyby a potvrzování – hotovo
 
 **Hotové:** formulář nového pohybu (partner, druh, směr u vrácení/ztráty/poškození/opravy s vysvětlením slovy, počty podle typů obou stran, datum, dodací list, poznámka), seznam pohybů s rychlými filtry (čeká na mě / rozpory k vyřešení / čeká na partnera), filtry partner/stav/druh/období/hledání, stránkování; detail pohybu: potvrzení protistranou, rozpor s opraveným počtem a důvodem, protinávrh, přijetí opravy (= schválení obou stran), zrušení navrženého pohybu autorem, historie změn; saldo po partnerech a typech jen z potvrzených pohybů, zvlášť „čeká na potvrzení“, saldo ke dni, hodnota kaucí. Číslování pohybů v rámci partnerství.

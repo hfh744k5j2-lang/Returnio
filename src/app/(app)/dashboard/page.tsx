@@ -71,7 +71,7 @@ export default async function DashboardPage() {
                 {balances.rows.slice(0, 12).map((r) => (
                   <tr key={r.partnershipId + r.packagingTypeId}>
                     <td><Link className="hover:underline" href={`/balances?partner=${r.partnershipId}`}>{r.partnerName}</Link></td>
-                    <td>{r.typeName}</td>
+                    <td>{r.typeName}<span className="block text-xs text-slate-500">{t("movementForm.owner", { owner: r.ownerName })}</span></td>
                     <td>
                       <BalanceCell t={t} n={r.confirmed} />
                       {r.pending !== 0 && <span className="block text-xs text-slate-500">{t("balances.pendingShort", { n: r.pending > 0 ? `+${r.pending}` : r.pending })}</span>}
@@ -81,6 +81,7 @@ export default async function DashboardPage() {
               </tbody>
             </table>
           )}
+          {balances.rows.length > 12 && <Link href="/balances" className="mt-2 inline-block text-sm text-brand-700 underline">{t("dashboard.moreRows", { n: balances.rows.length - 12 })}</Link>}
         </section>
 
         <section className="card">

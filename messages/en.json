@@ -115,7 +115,8 @@
     "recent": "Recent movements",
     "setupTitle": "Finish the setup:",
     "setupTypes": "Add packaging types (pallets, crates…)",
-    "setupPartners": "Invite your first partner company"
+    "setupPartners": "Invite your first partner company",
+    "moreRows": "and {n} more rows in Balance"
   },
   "status": {
     "PROPOSED": "Awaiting confirmation",

@@ -56,7 +56,7 @@ export function toView(p: PartnershipWithCompanies, companyId: string): PartnerV
     side,
     name: p.companyA.name,
     email: null,
-    code: p.codeB ?? p.code,
+    code: p.codeB ?? suggestCode(p.companyA.name), // nikdy interní kód strany A
     status: p.status,
     registered: true,
     partnerCompanyId: p.companyAId,
@@ -205,6 +205,14 @@ export async function acceptPartnerInvite(ctx: Ctx, token: string) {
     },
   });
   if (existing) throw conflict("S touto firmou už partnerství máte.");
+  // Nevzniká druhé partnerství se stejnou firmou: máme-li k pozývající firmě nevyřízenou pozvánku na její e-mail,
+  // musí pozývající firma přijmout tu (jinak by se historie rozdělila).
+  const otherEmails = (await prisma.user.findMany({ where: { companyId: p.companyAId }, select: { email: true } })).map((u) => u.email);
+  const mirror = await prisma.partnership.findFirst({
+    where: { companyAId: ctx.companyId, companyBId: null, invitedEmail: { in: otherEmails } },
+  });
+  if (mirror)
+    throw conflict("Této firmě jste už poslali pozvánku. Ať přijme tu původní – jinak by se historie pohybů rozdělila.");
   const codeB = await uniqueCode(ctx.companyId, suggestCode(p.companyA.name));
   return prisma.$transaction(async (tx) => {
     // podmíněná změna: pozvánku může přijmout jen jedna firma, i při souběhu
@@ -238,6 +246,7 @@ export async function acceptPartnerInvite(ctx: Ctx, token: string) {
 
 const updateSchema = z.object({
   name: z.string().trim().min(2, "Název musí mít alespoň 2 znaky.").max(200).optional(),
+  email: z.string().trim().toLowerCase().email("Zadejte platný e-mail partnera.").optional(),
   code: codeSchema.optional(),
 });
 
@@ -256,21 +265,34 @@ export async function updatePartner(ctx: Ctx, id: string, input: unknown) {
     });
     if (clash) throw conflict("Kód partnera už používáte.");
   }
+  const emailChange = side === "A" && !p.companyBId && data.email && data.email !== p.invitedEmail ? data.email : null;
+  if (data.email && !emailChange && data.email !== p.invitedEmail && side === "A")
+    throw invalid("E-mail lze změnit jen u partnera, který se zatím nezaregistroval.");
   const change: Prisma.PartnershipUpdateInput =
     side === "A"
-      ? { ...(data.code ? { code: data.code } : {}), ...(data.name && !p.companyBId ? { invitedName: data.name } : {}) }
+      ? {
+          ...(data.code ? { code: data.code } : {}),
+          ...(data.name && !p.companyBId ? { invitedName: data.name } : {}),
+          ...(emailChange ? { invitedEmail: emailChange } : {}),
+        }
       : { ...(data.code ? { codeB: data.code } : {}) };
   await prisma.$transaction(async (tx) => {
     await tx.partnership.update({ where: { id: p.id }, data: change });
+    if (emailChange) {
+      // starý e-mail už nesmí nic potvrzovat ani přijmout pozvánku
+      await tx.partnerLinkToken.updateMany({ where: { partnershipId: p.id, usedAt: null }, data: { expiresAt: new Date() } });
+      await tx.partnership.update({ where: { id: p.id }, data: { inviteTokenHash: null } });
+    }
     await audit(tx, {
       actor: { userId: ctx.userId },
       companyId: ctx.companyId, // interní (vlastní kód/název partnera)
       action: "partner.updated",
       entityType: "Partnership",
       entityId: p.id,
-      data: { side, ...data },
+      data: { side, ...data, ...(emailChange ? { previousEmail: p.invitedEmail } : {}) },
     });
   });
+  if (emailChange) await resendPartnerInvite(ctx, p.id);
 }
 
 /** Opětovné odeslání pozvánky (nový odkaz, starý přestane platit). */

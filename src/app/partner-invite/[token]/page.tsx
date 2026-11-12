@@ -22,7 +22,10 @@ export default async function PartnerInvitePage({ params }: { params: Promise<{ 
     const u = await currentUser();
     if (!u) redirect(`/login?next=/partner-invite/${token}`);
     const res = await runAction(async () => {
-      if (!(await findPartnerInvite(token))) throw new AppError("VALIDATION", "Pozvánka partnera je neplatná nebo už byla použita.");
+      const inv = await findPartnerInvite(token);
+      if (!inv) throw new AppError("VALIDATION", "Pozvánka partnera je neplatná nebo už byla použita.");
+      if (inv.invitedEmail.toLowerCase() !== u.email.toLowerCase())
+        throw new AppError("FORBIDDEN", "Pozvánka je určena pro jiný e-mail.");
       if (!u.companyId) await createCompanyForUser(u.id, formToObject(fd));
       const ctx = await getCtx();
       if (!ctx) throw new AppError("VALIDATION", "Nejdřív zaregistrujte firmu.");

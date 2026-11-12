@@ -115,7 +115,8 @@
     "recent": "Poslední pohyby",
     "setupTitle": "Dokončete nastavení:",
     "setupTypes": "Přidejte typy obalů (palety, přepravky…)",
-    "setupPartners": "Pozvěte první partnerskou firmu"
+    "setupPartners": "Pozvěte první partnerskou firmu",
+    "moreRows": "a dalších {n} řádků v Saldu"
   },
   "status": {
     "PROPOSED": "Čeká na potvrzení",

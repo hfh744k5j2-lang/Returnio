@@ -60,6 +60,7 @@ export async function loadAggregates(partnershipIds: string[], asOf?: Date): Pro
     JOIN "Movement" m ON m."id" = l."movementId"
     WHERE m."partnershipId" IN (${Prisma.join(partnershipIds)})
       AND m."status" IN ('CONFIRMED', 'PROPOSED', 'DISPUTED')
+      AND l."reusable" = true -- nevratné obaly (kartony) se nevracejí, saldo nemají; slouží jen výkazu PPWR
       ${dateFilter}
     GROUP BY m."partnershipId", m."fromSide", m."status", l."packagingTypeId"
   `);

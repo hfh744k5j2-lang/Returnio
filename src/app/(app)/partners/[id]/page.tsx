@@ -10,6 +10,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { QrImage } from "@/components/QrImage";
 import { appUrl } from "@/lib/tokens";
 import { resend, update } from "../actions";
+import { BalanceCell } from "@/components/BalanceText";
 
 export default async function PartnerDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,15 +51,14 @@ export default async function PartnerDetail({ params }: { params: Promise<{ id: 
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.packagingTypeId}>
-                    <td>{r.typeName} <span className="font-mono text-xs text-slate-500">{r.typeCode}</span></td>
-                    <td className="text-right font-semibold tabular-nums">{r.confirmed}</td>
+                    <td>{r.typeName} <span className="font-mono text-xs text-slate-500">{r.typeCode}</span><span className="block text-xs text-slate-500">{t("movementForm.owner", { owner: r.ownerName })}</span></td>
+                    <td className="text-right"><BalanceCell t={t} n={r.confirmed} /></td>
                     <td className="text-right tabular-nums text-slate-500">{r.pending || "–"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-          <p className="muted mt-3">{t("balances.signHelp")}</p>
         </section>
 
         <section className="card text-center">
@@ -72,11 +72,15 @@ export default async function PartnerDetail({ params }: { params: Promise<{ id: 
       {manage && (
         <section className="card">
           <h2 className="h2 mb-4">{t("partners.edit")}</h2>
-          <ActionForm action={update} className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end" successMessage={t("common.saved")}>
+          <ActionForm action={update} className="grid gap-3 sm:grid-cols-[1fr_1fr_12rem_auto] sm:items-end" successMessage={t("common.saved")}>
             <input type="hidden" name="id" value={id} />
             <div>
               <label className="label" htmlFor="e-name">{t("partners.name")}</label>
               <input id="e-name" name="name" className="input" defaultValue={partner.name} disabled={partner.registered} />
+            </div>
+            <div>
+              <label className="label" htmlFor="e-email">{t("partners.email")}</label>
+              <input id="e-email" name="email" type="email" className="input" defaultValue={partner.email ?? ""} disabled={partner.registered || partner.side !== "A"} />
             </div>
             <div>
               <label className="label" htmlFor="e-code">{t("partners.code")}</label>

@@ -8,7 +8,13 @@ import { createPackagingType, updatePackagingType } from "@/lib/services/packagi
 
 function fields(fd: FormData) {
   const o = formToObject(fd);
-  return { ...o, reusable: fd.get("reusable") === "on", active: fd.has("activePresent") ? fd.get("active") === "on" : undefined };
+  return {
+    ...o,
+    material: o.material ?? null, // prázdné pole = smazat
+    deposit: o.deposit ?? null,
+    reusable: fd.get("reusable") === "on",
+    active: fd.has("activePresent") ? fd.get("active") === "on" : undefined,
+  };
 }
 
 export async function create(_p: ActionState, fd: FormData): Promise<ActionState> {
