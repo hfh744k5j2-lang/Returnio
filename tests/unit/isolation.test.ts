@@ -44,7 +44,7 @@ beforeAll(async () => {
   pAU = (await partners.invitePartner(A, { name: "Neregistrovaný U", email: "u-unreg@example.com" })).partnership.id;
 
   typeA = (await packaging.createPackagingType(A, { name: "EUR paleta A", code: "EUR", weightKg: 25, reusable: true })).id;
-  typeB = (await packaging.createPackagingType(B, { name: "Přepravka B", code: "BOX", weightKg: 2, reusable: true })).id;
+  typeB = (await packaging.createPackagingType(B, { name: "Přepravka B", code: "BOX", weightKg: 2, reusable: true, sharedWithPartners: true })).id;
   typeC = (await packaging.createPackagingType(C, { name: "IBC C", code: "IBC", weightKg: 60, reusable: true })).id;
   typeD = (await packaging.createPackagingType(D, { name: "Box D", code: "BOXD", weightKg: 1, reusable: true })).id;
 
@@ -107,7 +107,7 @@ describe("typy obalů", () => {
     const t = await prisma.packagingType.findUniqueOrThrow({ where: { id: typeC } });
     expect(t.name).toBe("IBC C");
   });
-  it("typy pro pohyb s partnerem = jen typy obou stran", async () => {
+  it("typy pro pohyb s partnerem = jen typy obou stran (typ B je nabízený; nenabízené viz isolation-review)", async () => {
     const ids = (await packaging.listTypesForPartnership(A, pAB)).map((t) => t.id).sort();
     expect(ids).toEqual([typeA, typeB].sort());
     await expectNotFound(packaging.listTypesForPartnership(A, pCD));
@@ -340,7 +340,7 @@ describe("registr pokrytí služeb", () => {
     const missing: string[] = [];
     for (const file of files) {
       const modName = file.replace(/\.ts$/, "");
-      const mod = await import(`@/lib/services/${modName}`);
+      const mod = await import(`../../src/lib/services/${modName}.ts`);
       for (const [name, value] of Object.entries(mod)) {
         if (typeof value !== "function" || EXEMPT.has(name)) continue;
         if (!src.includes(`.${name}(`)) missing.push(`${modName}.${name}`);

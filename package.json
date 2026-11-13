@@ -12,9 +12,9 @@
     "check": "npm run lint && npm run typecheck && npm run test",
     "e2e": "playwright test",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx --import ./scripts/load-env.ts prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "notify": "tsx scripts/run-notifications.ts",
+    "notify": "tsx --import ./scripts/load-env.ts scripts/run-notifications.ts",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "db:migrate:dev": "prisma migrate dev"
