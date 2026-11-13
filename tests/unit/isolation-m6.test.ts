@@ -88,6 +88,38 @@ describe("import", () => {
     expect(csv.csvCell("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
     expect(csv.csvCell("-5")).toBe("-5");
     expect(csv.toCsv(["x"], [["a;b"]])).toContain('"a;b"');
+    expect(csv.dec(1.25, 1)).toBe("1,3");
+    expect(csv.dec(null, 1)).toBe("");
+  });
+});
+
+describe("import – opravy z revize M6", () => {
+  const map = { date: "datum", partner: "partner", kind: "druh", packaging: "obal", quantity: "pocet", direction: "smer", deliveryNote: "dl" };
+  it("nejednoznačný partner (kód = název jiného partnera) je chyba, ne tichý výběr", async () => {
+    const X = await makeCompany("Beta s.r.o.");
+    const Y = await makeCompany("Gama");
+    await partners.invitePartner(A, { name: "Beta", email: X.email, code: "GAMA" }); // kód GAMA
+    await partners.invitePartner(A, { name: "Gama", email: Y.email, code: "GAM2" }); // název Gama
+    const text = `datum;partner;druh;obal;pocet;smer;dl\n${today()};Gama;výdej;EUR;3;;\n`;
+    const prev = await csv.previewImport(A, text, map);
+    expect(prev.errors[0]?.message).toMatch(/nejednoznačný/);
+  });
+  it("„1.000“ ani „1,5“ se nepřijme; dvojí import stejného souboru je chyba", async () => {
+    const pab = await prisma.partnership.findUniqueOrThrow({ where: { id: pAB } });
+    const bad = `datum;partner;druh;obal;pocet;smer;dl\n${today()};${pab.code};výdej;EUR;1.000;;\n${today()};${pab.code};výdej;EUR;1,5;;\n`;
+    expect((await csv.previewImport(A, bad, map)).errorCount).toBe(2);
+    const good = `datum;partner;druh;obal;pocet;smer;dl\n${today()};${pab.code};výdej;EUR;1000;;DL-DUP\n`;
+    await csv.runImport(A, good, map, "a.csv");
+    const again = await csv.previewImport(A, good, map);
+    expect(again.errors[0]?.message).toMatch(/už byl naimportován/);
+    await expect(csv.runImport(A, good, map, "a.csv")).rejects.toThrow(/chyb/);
+  });
+  it("směr u ztráty jen „u partnera / u nás“; „k nám“ se odmítne", async () => {
+    const pab = await prisma.partnership.findUniqueOrThrow({ where: { id: pAB } });
+    const t = `datum;partner;druh;obal;pocet;smer;dl\n${today()};${pab.code};ztráta;EUR;2;k nám;\n${today()};${pab.code};ztráta;EUR;2;u partnera;\n`;
+    const prev = await csv.previewImport(A, t, map);
+    expect(prev.errorCount).toBe(1);
+    expect(prev.errors[0].message).toMatch(/u partnera/);
   });
 });
 
@@ -106,7 +138,7 @@ describe("upozornění a odkazy", () => {
       if (m.text.includes("DL-TAJNE") || m.text.includes("tajná")) expect([...cU, ...dU, "m6-cu@example.com"]).toContain(m.to);
       if (m.text.includes("M6 A") || m.text.includes("M6 B")) expect([...aU, ...bU]).toContain(m.to);
     }
-    expect(sent.some((m) => bU.includes(m.to) && m.subject.includes("čeká"))).toBe(true); // B má potvrdit mAB2
+    expect(sent.some((m) => bU.includes(m.to) && m.subject.includes("čekající"))).toBe(true); // B má potvrdit mAB2
     expect(sent.some((m) => aU.includes(m.to) && m.subject.includes("limit"))).toBe(true);
     expect(sent.some((m) => m.to === "m6-cu@example.com")).toBe(true); // neregistrovaný partner C dostal připomínku
     // podruhé se nic neopakuje

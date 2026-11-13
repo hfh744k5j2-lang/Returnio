@@ -8,7 +8,7 @@ const FIELDS = ["date", "partner", "kind", "packaging", "quantity", "deliveryNot
 const REQUIRED = new Set(["date", "partner", "kind", "packaging", "quantity"]);
 type Mapping = Partial<Record<(typeof FIELDS)[number], string>>;
 type Analysis = { headers: string[]; sample: Record<string, string>[]; rowCount: number; mapping: Mapping };
-type Preview = { rows: number; movements: number; errors: { row: number; message: string }[]; errorCount: number };
+type Preview = { rows: number; movements: number; errors: { row: number; message: string }[]; errorCount: number; summary?: { partner: string; movements: number; pieces: number }[] };
 
 export function ImportWizard({
   analyze,
@@ -69,7 +69,11 @@ export function ImportWizard({
         return;
       }
       setDone(r?.data as { movements: number });
+      // průvodce se vynuluje – stejný soubor nejde omylem importovat podruhé
       setPrev(null);
+      setAnalysis(null);
+      setText("");
+      setMapping({});
     });
   }
 
@@ -77,7 +81,7 @@ export function ImportWizard({
     <div className="space-y-5">
       <section className="card space-y-3">
         <h2 className="h2">1. {t("import.stepFile")}</h2>
-        <input type="file" accept=".csv,text/csv" aria-label={t("import.file")} onChange={(e) => onFile(e.target.files?.[0])} className="block w-full text-sm" />
+        <input type="file" key={done ? "done" : "file"} accept=".csv,text/csv" aria-label={t("import.file")} onChange={(e) => onFile(e.target.files?.[0])} className="block w-full text-sm" />
         <p className="muted">{t("import.fileHelp")}</p>
         <a className="text-sm text-brand-700 underline" href="/import-vzor.csv" download>{t("import.sample")}</a>
       </section>
@@ -114,6 +118,13 @@ export function ImportWizard({
           {prev.errorCount === 0 ? (
             <>
               <p className="alert-ok">{t("import.ready", { rows: prev.rows, movements: prev.movements })}</p>
+              {prev.summary && (
+                <table className="table text-sm">
+                  <thead><tr><th>{t("common.partner")}</th><th className="text-right">{t("import.summaryMovements")}</th><th className="text-right">{t("import.summaryPieces")}</th></tr></thead>
+                  <tbody>{prev.summary.map((s) => <tr key={s.partner}><td>{s.partner}</td><td className="text-right">{s.movements}</td><td className="text-right">{s.pieces}</td></tr>)}</tbody>
+                </table>
+              )}
+              <p className="muted">{t("import.checkPartners")}</p>
               <button className="btn-primary" onClick={runCommit} disabled={pending}>{t("import.run", { n: prev.movements })}</button>
             </>
           ) : (

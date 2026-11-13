@@ -10,7 +10,7 @@ function parseDay(v: string | undefined, fallback: string) {
   return { s, d: new Date(`${s}T00:00:00Z`) };
 }
 
-export default async function PpwrPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
+export default async function PpwrPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; extraPieces?: string; extraKg?: string }> }) {
   const sp = await searchParams;
   const ctx = await requireCtx();
   const { t, locale } = await getT();
@@ -19,7 +19,13 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
   const from = parseDay(sp.from, `${today.slice(0, 4)}-01-01`);
   const to = parseDay(sp.to, today);
   const valid = !Number.isNaN(from.d.getTime()) && !Number.isNaN(to.d.getTime()) && from.d <= to.d;
-  const r = valid ? await ppwrReport(ctx, from.d, to.d) : null;
+  const num = (v?: string) => {
+    const n = Number(String(v ?? "").replace(",", "."));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+  const extra = { pieces: Math.floor(num(sp.extraPieces)), kg: num(sp.extraKg) };
+  const r = valid ? await ppwrReport(ctx, from.d, to.d, extra) : null;
+  const extraQs = `${extra.pieces ? `&extraPieces=${extra.pieces}` : ""}${extra.kg ? `&extraKg=${extra.kg}` : ""}`;
   const pct = (x: number | null) => (x === null ? "–" : `${formatNumber(x * 100, locale, 1)} %`);
   const year = Number(today.slice(0, 4));
 
@@ -29,9 +35,10 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
       <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4 text-amber-950" role="note" data-testid="ppwr-warning">
         <p className="text-lg font-bold">⚠ {t("ppwr.warningTitle")}</p>
         <p className="mt-1 text-sm">{t("ppwr.warningText")}</p>
+        <p className="mt-1 text-sm font-semibold">{t("ppwr.warningScope")}</p>
       </div>
 
-      <form method="get" className="card grid gap-3 sm:grid-cols-[12rem_12rem_auto] sm:items-end">
+      <form method="get" className="card grid gap-3 sm:grid-cols-2 lg:grid-cols-[12rem_12rem_12rem_12rem_auto] lg:items-end">
         <div>
           <label className="label" htmlFor="pp-from">{t("movements.from")}</label>
           <input id="pp-from" type="date" name="from" defaultValue={from.s} className="input" />
@@ -39,6 +46,14 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
         <div>
           <label className="label" htmlFor="pp-to">{t("movements.to")}</label>
           <input id="pp-to" type="date" name="to" defaultValue={to.s} max={today} className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="pp-xp">{t("ppwr.extraPieces")}</label>
+          <input id="pp-xp" type="number" min={0} name="extraPieces" defaultValue={extra.pieces || ""} className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="pp-xk">{t("ppwr.extraKg")}</label>
+          <input id="pp-xk" type="number" min={0} step="0.1" name="extraKg" defaultValue={extra.kg || ""} className="input" />
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="btn-primary">{t("ppwr.calculate")}</button>
@@ -62,11 +77,12 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
               <p className="muted">{t("ppwr.empty")}</p>
             ) : (
               <table className="table" data-testid="ppwr-table">
-                <thead><tr><th>{t("packaging.type")}</th><th>{t("packaging.reusable")}</th><th className="text-right">{t("ppwr.issued")}</th><th className="text-right">{t("ppwr.weight")}</th><th className="text-right">{t("ppwr.avgPool")}</th><th className="text-right">{t("ppwr.rotations")}</th></tr></thead>
+                <thead><tr><th>{t("packaging.type")}</th><th>{t("ppwr.owner")}</th><th>{t("packaging.reusable")}</th><th className="text-right">{t("ppwr.issued")}</th><th className="text-right">{t("ppwr.weight")}</th><th className="text-right">{t("ppwr.avgPool")}</th><th className="text-right">{t("ppwr.rotations")}</th></tr></thead>
                 <tbody>
                   {r.types.map((x) => (
-                    <tr key={x.packagingTypeId} data-type={x.code}>
+                    <tr key={x.key} data-type={x.code}>
                       <td>{x.name} <span className="font-mono text-xs text-slate-500">{x.code}</span></td>
+                      <td>{x.owner}</td>
                       <td>{x.reusable ? t("common.yes") : t("common.no")}</td>
                       <td className="text-right tabular-nums">{formatNumber(x.pieces, locale)}</td>
                       <td className="text-right tabular-nums">{formatNumber(x.weightKg, locale, 1)}</td>
@@ -74,6 +90,9 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
                       <td className="text-right font-semibold tabular-nums">{x.rotations === null ? "–" : formatNumber(x.rotations, locale, 2)}</td>
                     </tr>
                   ))}
+                  {(r.extraOneWayPieces > 0 || r.extraOneWayKg > 0) && (
+                    <tr><td colSpan={2}>{t("ppwr.extraRow")}</td><td>{t("common.no")}</td><td className="text-right tabular-nums">{formatNumber(r.extraOneWayPieces, locale)}</td><td className="text-right tabular-nums">{formatNumber(r.extraOneWayKg, locale, 1)}</td><td></td><td></td></tr>
+                  )}
                 </tbody>
               </table>
             )}
@@ -88,7 +107,7 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
             </ul>
             <p className="muted mt-2">{t("ppwr.methodVersion", { v: r.method })}</p>
           </section>
-          <a className="btn-secondary" href={`/api/v1/export/ppwr?from=${from.s}&to=${to.s}`}>{t("ppwr.exportCsv")}</a>
+          <a className="btn-secondary" href={`/api/v1/export/ppwr?from=${from.s}&to=${to.s}${extraQs}`}>{t("ppwr.exportCsv")}</a>
         </>
       )}
     </div>

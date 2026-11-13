@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import { createHash } from "crypto";
 import type { MovementKind } from "@prisma/client";
 import { prisma } from "../db";
 import type { Ctx } from "../context";
@@ -18,6 +19,20 @@ export function csvCell(v: unknown): string {
   if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = `'${s}`;
   return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
+
+/** Desetinné číslo s čárkou pro český Excel. */
+export function dec(n: number | null | undefined, digits: number): string {
+  return n === null || n === undefined ? "" : n.toFixed(digits).replace(".", ",");
+}
+
+const DIR_CS: Record<MovementKind, Record<"IN" | "OUT", string>> = {
+  ISSUE: { OUT: "od nás", IN: "k nám" },
+  RECEIPT: { OUT: "od nás", IN: "k nám" },
+  RETURN: { OUT: "od nás", IN: "k nám" },
+  LOSS: { IN: "u partnera", OUT: "u nás" },
+  DAMAGE: { IN: "u partnera", OUT: "u nás" },
+  CORRECTION: { OUT: "partner dluží více", IN: "partner dluží méně" },
+};
 
 /** CSV pro český Excel: středník, UTF-8 s BOM. */
 export function toCsv(header: string[], rows: unknown[][]): string {
@@ -45,7 +60,7 @@ export async function exportMovementsCsv(ctx: Ctx, f: MovementFilters = {}) {
         m.date.toISOString().slice(0, 10),
         m.partnerName,
         KIND_CS[m.kind],
-        m.direction === "OUT" ? "od nás" : "k nám",
+        DIR_CS[m.kind][m.direction],
         l.code,
         l.name,
         l.quantity,
@@ -71,18 +86,25 @@ export async function exportBalancesCsv(ctx: Ctx, opts: { partnershipId?: string
   );
 }
 
-export async function exportPpwrCsv(ctx: Ctx, from: Date, to: Date) {
-  const r = await ppwrReport(ctx, from, to);
-  const pct = (x: number | null) => (x === null ? "" : (x * 100).toFixed(1));
+export async function exportPpwrCsv(ctx: Ctx, from: Date, to: Date, extraOneWay?: { pieces: number; kg: number }) {
+  const r = await ppwrReport(ctx, from, to, extraOneWay);
+  const pct = (x: number | null) => (x === null ? "" : dec(x * 100, 1));
+  const day = (d: Date) => d.toISOString().slice(0, 10);
   return toCsv(
-    ["kod_obalu", "obal", "vratny", "vydano_ks", "hmotnost_kg", "prumer_v_obehu_ks", "obratky"],
+    ["ORIENTAČNÍ VÝPOČET – EU metodiku zatím nevydala (do 30. 6. 2027)", "", "", "", "", "", "", ""],
     [
-      ...r.types.map((t) => [t.code, t.name, t.reusable ? "ano" : "ne", t.pieces, t.weightKg.toFixed(3), t.avgPool ?? "", t.rotations?.toFixed(2) ?? ""]),
+      ["obdobi_od", day(r.from)],
+      ["obdobi_do", day(r.to)],
+      ["metoda", r.method],
+      ["nepotvrzene_vydeje_mimo_vypocet", r.pendingCount],
       [],
-      ["CELKEM", "", "", r.totalPieces, r.totalWeightKg.toFixed(3), "", ""],
+      ["kod_obalu", "obal", "vlastnik", "vratny", "vydano_ks", "hmotnost_kg", "prumer_v_obehu_ks", "obratky"],
+      ...r.types.map((t) => [t.code, t.name, t.owner, t.reusable ? "ano" : "ne", t.pieces, dec(t.weightKg, 3), dec(t.avgPool, 1), dec(t.rotations, 2)]),
+      ...(r.extraOneWayPieces || r.extraOneWayKg ? [["MIMO EVIDENCI", "nevratné obaly doplněné ručně", "", "ne", r.extraOneWayPieces, dec(r.extraOneWayKg, 3), "", ""]] : []),
+      [],
+      ["CELKEM", "", "", "", r.totalPieces, dec(r.totalWeightKg, 3), "", ""],
       ["podil_vratnych_ks_%", pct(r.reusableSharePieces)],
       ["podil_vratnych_kg_%", pct(r.reusableShareWeight)],
-      ["metoda", r.method, "ORIENTAČNÍ VÝPOČET – EU metodiku zatím nevydala"],
     ],
   );
 }
@@ -93,7 +115,7 @@ export const IMPORT_FIELDS = ["date", "partner", "kind", "packaging", "quantity"
 export type ImportField = (typeof IMPORT_FIELDS)[number];
 export type ImportMapping = Partial<Record<ImportField, string>>;
 const REQUIRED: ImportField[] = ["date", "partner", "kind", "packaging", "quantity"];
-const MAX_ROWS = 5000;
+const MAX_ROWS = 2000;
 
 export function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
   if (text.length > 3_000_000) throw invalid("Soubor je příliš velký (max. 3 MB).");
@@ -144,9 +166,18 @@ const KIND_WORDS: Record<string, MovementKind> = {
   damage: "DAMAGE", poskozeni: "DAMAGE", uszkodzenie: "DAMAGE",
   correction: "CORRECTION", oprava: "CORRECTION", upravasalda: "CORRECTION", korekta: "CORRECTION",
 };
-const DIR_WORDS: Record<string, "IN" | "OUT"> = {
-  in: "IN", knam: "IN", odpartnera: "IN", prijato: "IN", unas: "OUT",
-  out: "OUT", odnas: "OUT", kpartnerovi: "OUT", upartnera: "IN",
+/** Směr podle druhu – stejná slova jako v aplikaci, aby nešlo omylem obrátit saldo. */
+const DIR_WORDS: Record<"RETURN" | "LOSS" | "DAMAGE" | "CORRECTION", Record<string, "IN" | "OUT">> = {
+  RETURN: { in: "IN", knam: "IN", odpartnera: "IN", out: "OUT", odnas: "OUT", kpartnerovi: "OUT" },
+  LOSS: { upartnera: "IN", atpartner: "IN", unas: "OUT", atus: "OUT" },
+  DAMAGE: { upartnera: "IN", atpartner: "IN", unas: "OUT", atus: "OUT" },
+  CORRECTION: { partnerdluzivice: "OUT", vice: "OUT", more: "OUT", partnerdluzimene: "IN", mene: "IN", less: "IN" },
+};
+const DIR_HELP: Record<keyof typeof DIR_WORDS, string> = {
+  RETURN: "„k nám“ (partner vrací nám) nebo „od nás“ (vracíme partnerovi)",
+  LOSS: "„u partnera“ nebo „u nás“",
+  DAMAGE: "„u partnera“ nebo „u nás“",
+  CORRECTION: "„partner dluží více“ nebo „partner dluží méně“",
 };
 
 export function parseDate(v: string): Date | null {
@@ -187,12 +218,17 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
   }
   const partners = await listPartners(ctx);
   const partnerRecords = await prisma.partnership.findMany({ where: { id: { in: partners.map((p) => p.id) } } });
-  const byKey = new Map<string, string>();
+  // klíč → množina partnerů; víc shod = nejednoznačné (nikdy tiše nevybrat jiného partnera)
+  const byKey = new Map<string, Set<string>>();
+  const addKey = (k: string, id: string) => {
+    if (!k) return;
+    byKey.set(k, (byKey.get(k) ?? new Set()).add(id));
+  };
   for (const p of partners) {
-    byKey.set(norm(p.code), p.id);
-    byKey.set(norm(p.name), p.id);
+    addKey(norm(p.code), p.id);
+    addKey(norm(p.name), p.id);
   }
-  for (const p of partnerRecords) if (p.companyAId === ctx.companyId) byKey.set(norm(p.invitedEmail), p.id);
+  for (const p of partnerRecords) if (p.companyAId === ctx.companyId) addKey(norm(p.invitedEmail), p.id);
 
   const companyIds = new Set<string>([ctx.companyId]);
   for (const p of partnerRecords) {
@@ -210,14 +246,17 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
     const date = parseDate(col(r, "date"));
     if (!date) return fail(`Neplatné datum „${col(r, "date")}“ (použijte 2026-03-31 nebo 31.3.2026).`);
     if (date.getTime() > Date.now() + 24 * 3600 * 1000) return fail("Datum je v budoucnosti.");
-    const partnershipId = byKey.get(norm(col(r, "partner")));
-    if (!partnershipId) return fail(`Neznámý partner „${col(r, "partner")}“ (použijte kód, název nebo e-mail partnera).`);
+    const matches = byKey.get(norm(col(r, "partner")));
+    if (!matches || matches.size === 0) return fail(`Neznámý partner „${col(r, "partner")}“ (použijte kód, název nebo e-mail partnera).`);
+    if (matches.size > 1) return fail(`Partner „${col(r, "partner")}“ je nejednoznačný (odpovídá víc partnerům). Použijte kód partnera.`);
+    const partnershipId = [...matches][0];
     const kind = KIND_WORDS[norm(col(r, "kind"))];
     if (!kind) return fail(`Neznámý druh pohybu „${col(r, "kind")}“ (výdej, příjem, vrácení, ztráta, poškození, oprava).`);
     let direction: "IN" | "OUT" | undefined = FIXED_DIRECTION[kind];
     if (!direction) {
-      direction = DIR_WORDS[norm(col(r, "direction"))];
-      if (!direction) return fail(`U druhu „${col(r, "kind")}“ vyplňte směr (k nám / od nás).`);
+      const k2 = kind as keyof typeof DIR_WORDS;
+      direction = DIR_WORDS[k2][norm(col(r, "direction"))];
+      if (!direction) return fail(`U druhu „${col(r, "kind")}“ vyplňte směr: ${DIR_HELP[k2]}.`);
     }
     const p = partnerRecords.find((x) => x.id === partnershipId)!;
     const allowedCompanies = [p.companyAId, p.companyBId].filter(Boolean);
@@ -227,19 +266,52 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
       types.find((t) => t.code === code && t.companyId === ctx.companyId) ??
       types.find((t) => t.code === code && allowedCompanies.includes(t.companyId));
     if (!type) return fail(`Neznámý kód obalu „${col(r, "packaging")}“.`);
-    const qRaw = col(r, "quantity").replace(/\s/g, "").replace(",", ".");
+    if (kind === "ISSUE" && !type.active) return fail(`Obal „${type.code}“ je vyřazený – nelze ho vydat.`);
+    // jen celé číslo bez oddělovače tisíců („1.000“ by jinak mohlo znamenat 1)
+    const qRaw = col(r, "quantity").replace(/[\s\u00a0]/g, "");
+    if (!/^\d+$/.test(qRaw)) return fail(`Počet „${col(r, "quantity")}“ musí být celé číslo bez desetinné čárky a bez oddělovače tisíců.`);
     const q = Number(qRaw);
-    if (!Number.isInteger(q) || q < 1 || q > 1_000_000) return fail(`Počet „${col(r, "quantity")}“ musí být celé číslo od 1.`);
-    const deliveryNote = col(r, "deliveryNote").slice(0, 60) || undefined;
+    if (q < 1 || q > 1_000_000) return fail(`Počet „${col(r, "quantity")}“ musí být od 1 do 1 000 000.`);
+    const dlRaw = col(r, "deliveryNote");
+    if (dlRaw.length > 60) return fail("Dodací list může mít nejvýše 60 znaků.");
+    const deliveryNote = dlRaw || undefined;
     const key = [partnershipId, date.toISOString().slice(0, 10), kind, direction, deliveryNote ?? ""].join("|");
     const g =
       groups.get(key) ??
       { key, partnershipId, kind, direction: FIXED_DIRECTION[kind] ? undefined : direction, date, deliveryNote, note: col(r, "note").slice(0, 1000) || undefined, lines: new Map<string, number>(), rows: [] as number[] };
+    const rowNote = col(r, "note").slice(0, 1000);
+    if (rowNote && g.note && !g.note.includes(rowNote)) g.note = `${g.note}; ${rowNote}`.slice(0, 1000);
     g.lines.set(type.id, (g.lines.get(type.id) ?? 0) + q);
+    if (g.lines.size > 50) return fail("Jeden pohyb (stejný partner, den, druh a dodací list) může mít nejvýše 50 typů obalů.");
     g.rows.push(rowNo);
     groups.set(key, g);
   });
-  return { rows: rows.length, errors, groups: [...groups.values()] };
+
+  // opakovaný import stejného souboru: každá skupina má otisk; existující pohyb = chyba u řádku
+  const keyed = [...groups.values()].map((g) => ({ ...g, clientKey: groupKey(g) }));
+  const existing = keyed.length
+    ? await prisma.movement.findMany({
+        where: { OR: keyed.map((g) => ({ partnershipId: g.partnershipId, clientKey: g.clientKey })) },
+        select: { partnershipId: true, clientKey: true, number: true },
+      })
+    : [];
+  for (const g of keyed) {
+    const ex = existing.find((e) => e.partnershipId === g.partnershipId && e.clientKey === g.clientKey);
+    if (ex) errors.push({ row: g.rows[0], message: `Tento pohyb už byl naimportován dříve (P-${String(ex.number).padStart(6, "0")}). Řádky ${g.rows.join(", ")}.` });
+  }
+  const names = new Map(partners.map((p) => [p.id, p.name]));
+  const summary = [...new Set(keyed.map((g) => g.partnershipId))].map((pid) => ({
+    partner: names.get(pid) ?? "",
+    movements: keyed.filter((g) => g.partnershipId === pid).length,
+    pieces: keyed.filter((g) => g.partnershipId === pid).reduce((s, g) => s + [...g.lines.values()].reduce((a, b) => a + b, 0), 0),
+  }));
+  return { rows: rows.length, errors: errors.sort((a, b) => a.row - b.row), groups: keyed, summary };
+}
+
+function groupKey(g: Group): string {
+  const lines = [...g.lines.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([t, q]) => `${t}:${q}`).join(",");
+  const raw = [g.partnershipId, g.date.toISOString().slice(0, 10), g.kind, g.direction ?? "", g.deliveryNote ?? "", lines].join("|");
+  return `imp:${createHash("sha256").update(raw).digest("hex").slice(0, 40)}`;
 }
 
 const FIELD_LABEL: Record<ImportField, string> = {
@@ -254,8 +326,8 @@ const FIELD_LABEL: Record<ImportField, string> = {
 };
 
 export async function previewImport(ctx: Ctx, text: string, mapping: ImportMapping) {
-  const { rows, errors, groups } = await prepare(ctx, text, mapping);
-  return { rows, movements: groups.length, errors: errors.slice(0, 200), errorCount: errors.length };
+  const { rows, errors, groups, summary } = await prepare(ctx, text, mapping);
+  return { rows, movements: groups.length, errors: errors.slice(0, 200), errorCount: errors.length, summary };
 }
 
 /** Import: vše, nebo nic. Pohyby vznikají jako navržené – partner je musí potvrdit. */
@@ -282,6 +354,7 @@ export async function runImport(ctx: Ctx, text: string, mapping: ImportMapping, 
                 date: g.date,
                 deliveryNote: g.deliveryNote,
                 note: g.note,
+                clientKey: g.clientKey,
                 lines: [...g.lines.entries()].map(([packagingTypeId, quantity]) => ({ packagingTypeId, quantity })),
               },
               { importBatchId: batch.id, tx },

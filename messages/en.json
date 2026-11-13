@@ -351,7 +351,8 @@
         "counter_proposed": "counter-proposal",
         "dispute_resolved": "dispute resolved by agreement",
         "cancelled": "cancelled",
-        "link_resent": "link resent to partner"
+        "link_resent": "link resent to partner",
+        "link_sent": "link sent to partner"
       },
       "company": {
         "created": "company registered",
@@ -427,7 +428,7 @@
     "intro": "Upload an export from your ERP or Excel. Map the columns to ObalBook fields, we check the file, and the movements are created as “awaiting confirmation” – the partner confirms them like manual entries.",
     "stepFile": "File",
     "file": "CSV file",
-    "fileHelp": "CSV separated by semicolon or comma, with a header row. UTF-8 or Windows-1250. Max. 5,000 rows / 3 MB.",
+    "fileHelp": "CSV separated by semicolon or comma, with a header row. UTF-8 or Windows-1250. Max. 2,000 rows / 3 MB.",
     "sample": "Download sample file",
     "tooBig": "The file is too large (max. 3 MB).",
     "stepMapping": "Column mapping",
@@ -443,7 +444,7 @@
       "note": "Note"
     },
     "notMapped": "– not used –",
-    "mappingHelp": "Rows with the same partner, day, kind and delivery note are merged into one movement. Kind: issue, receipt, return, loss, damage, correction. Direction: “in” or “out”.",
+    "mappingHelp": "Rows with the same partner, day, kind and delivery note are merged into one movement. Kind: issue, receipt, return, loss, damage, correction. Direction: for returns “in”/“out”, for loss and damage “at partner”/“at us”, for corrections “more”/“less”. Quantities as whole numbers without thousands separators.",
     "check": "Check file",
     "stepPreview": "Check",
     "ready": "No errors: {rows} rows → {movements} movements.",
@@ -452,7 +453,10 @@
     "row": "Row {n}",
     "done": "Imported {n} movements. They are waiting for partner confirmation.",
     "showMovements": "Show",
-    "working": "Working…"
+    "working": "Working…",
+    "summaryMovements": "Movements",
+    "summaryPieces": "Pieces",
+    "checkPartners": "Check that the movements are assigned to the right partners."
   },
   "ppwr": {
     "title": "PPWR report – share of reusable packaging",
@@ -475,11 +479,16 @@
     "avgPool": "Average at partners (pcs)",
     "rotations": "Rotations",
     "methodTitle": "How we calculate",
-    "method1": "We count your company's confirmed issues to partners dated within the period (reusable and one-way packaging).",
+    "method1": "We count your company's confirmed issues to partners dated within the period (reusable and one-way packaging recorded in ObalBook) plus one-way packaging entered manually.",
     "method2": "Reusable share = reusable / all packaging, separately in pieces and kilograms. Weight and reusability are taken as they were when the movement was recorded.",
     "method3": "Rotations = pieces issued in the period / average pieces at partners (positive confirmed balance, average of start and end of the period).",
     "method4": "Unconfirmed and disputed movements are not counted.",
     "methodVersion": "Method version: {v}",
-    "exportCsv": "Export report (CSV)"
+    "exportCsv": "Export report (CSV)",
+    "extraPieces": "One-way outside records (pcs)",
+    "extraKg": "One-way outside records (kg)",
+    "extraRow": "One-way packaging outside records (entered manually)",
+    "owner": "Owner",
+    "warningScope": "We only count packaging recorded in ObalBook. Enter one-way packaging you do not record (cartons, film…) below – otherwise the reusable share is overstated."
   }
 }

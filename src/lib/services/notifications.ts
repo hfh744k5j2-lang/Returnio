@@ -9,11 +9,20 @@ import { getBalances, totalAbsByPartner } from "./balance";
 
 export const STALE_DAYS = 3;
 
-async function once(key: string, data: { companyId: string | null; kind: string; sentTo: string }, send: () => Promise<void>) {
-  if (await prisma.notificationLog.findUnique({ where: { key } })) return false;
-  await send();
-  await prisma.notificationLog.create({ data: { key, ...data } });
-  return true;
+/** Nejdřív zápis (unikátní klíč), pak odeslání – souběžné spuštění cronu nepošle e-mail dvakrát. */
+async function once(key: string, data: { companyId: string | null; kind: string; sentTo: string }, send: () => Promise<unknown>) {
+  try {
+    await prisma.notificationLog.create({ data: { key, ...data } });
+  } catch {
+    return false; // už odesláno (nebo právě odesílá jiný běh)
+  }
+  try {
+    await send();
+    return true;
+  } catch (e) {
+    await prisma.notificationLog.delete({ where: { key } }).catch(() => undefined);
+    throw e;
+  }
 }
 
 function isoWeek(d: Date) {
@@ -37,10 +46,17 @@ export async function runNotifications(now = new Date()) {
   const cutoff = new Date(now.getTime() - STALE_DAYS * 24 * 3600 * 1000);
 
   // 1) staré nepotvrzené pohyby
+  // „starší 3 dnů“ = od poslední změny stavu: u navrženého od vzniku, u rozporu od otevřeného návrhu opravy
   const stale = await prisma.movement.findMany({
-    where: { status: { in: ["PROPOSED", "DISPUTED"] }, createdAt: { lt: cutoff } },
+    where: {
+      OR: [
+        { status: "PROPOSED", createdAt: { lt: cutoff } },
+        { status: "DISPUTED", corrections: { some: { status: "OPEN", createdAt: { lt: cutoff } } } },
+      ],
+    },
     include: { partnership: { include: { companyA: true, companyB: true } }, corrections: { where: { status: "OPEN" } } },
-    take: 5000,
+    orderBy: { createdAt: "desc" },
+    take: 2000,
   });
   const digest = new Map<string, { companyId: string | null; items: { key: string; line: string }[] }>();
   for (const m of stale) {
@@ -49,7 +65,7 @@ export async function runNotifications(now = new Date()) {
     const p = m.partnership;
     if (actSide === "B" && !p.companyBId) {
       // neregistrovaný partner: připomínka s novým jednorázovým odkazem (jednou)
-      const sent = await once(`stale-link:${m.id}`, { companyId: null, kind: "stale", sentTo: p.invitedEmail }, async () => {
+      const sent = await once(`stale-link:${m.id}:${m.corrections[0]?.id ?? "proposed"}`, { companyId: null, kind: "stale", sentTo: p.invitedEmail }, async () => {
         await sendPartnerLink(m.id);
       }).catch(() => false);
       if (sent) stats.staleLinks++;
@@ -58,7 +74,8 @@ export async function runNotifications(now = new Date()) {
     const companyId = actSide === "A" ? p.companyAId : p.companyBId!;
     const otherName = actSide === "A" ? (p.companyB?.name ?? p.invitedName) : p.companyA.name;
     for (const email of await notifyEmailsForSide(p, actSide)) {
-      const key = `stale:${m.id}:${email}`;
+      // klíč podle „tahu“ – když se pohyb po protinávrhu vrátí ke stejné straně, připomene se znovu
+      const key = `stale:${m.id}:${m.corrections[0]?.id ?? "proposed"}:${email}`;
       if (await prisma.notificationLog.findUnique({ where: { key } })) continue;
       const d = digest.get(email) ?? { companyId, items: [] };
       d.items.push({
@@ -70,17 +87,21 @@ export async function runNotifications(now = new Date()) {
   }
   for (const [email, d] of digest) {
     await safely(async () => {
+      const res = await prisma.notificationLog.createMany({
+        data: d.items.map((i) => ({ key: i.key, companyId: d.companyId, kind: "stale", sentTo: email })),
+        skipDuplicates: true,
+      });
+      if (res.count === 0) return; // souběžný běh už odeslal
       await sendEmail({
         to: email,
-        subject: `ObalBook: ${d.items.length} pohybů čeká déle než ${STALE_DAYS} dny`,
+        subject: `ObalBook: pohyby čekající déle než ${STALE_DAYS} dny (${d.items.length})`,
         text:
           `Tyto pohyby obalů čekají na vaše potvrzení nebo vyřešení rozporu déle než ${STALE_DAYS} dny:\n\n` +
           d.items.map((i) => i.line).join("\n") +
           `\n\n---\nThese packaging movements have been waiting for your action for more than ${STALE_DAYS} days.`,
-      });
-      await prisma.notificationLog.createMany({
-        data: d.items.map((i) => ({ key: i.key, companyId: d.companyId, kind: "stale", sentTo: email })),
-        skipDuplicates: true,
+      }).catch(async (e) => {
+        await prisma.notificationLog.deleteMany({ where: { key: { in: d.items.map((i) => i.key) } } });
+        throw e;
       });
       stats.staleEmails++;
     });
@@ -96,7 +117,10 @@ export async function runNotifications(now = new Date()) {
     for (const [pid, total] of totals) {
       if (total <= (c.balanceAlertLimit ?? Infinity)) continue;
       const partner = partners.find((p) => p.id === pid)!;
-      const detail = rows.filter((r) => r.partnershipId === pid && r.confirmed !== 0).map((r) => `- ${r.typeName} (${r.typeCode}): ${r.confirmed}`).join("\n");
+      const detail = rows
+        .filter((r) => r.partnershipId === pid && r.confirmed !== 0)
+        .map((r) => `- ${r.typeName} (${r.typeCode}): ${r.confirmed > 0 ? `partner nám dluží ${r.confirmed} ks` : `dlužíme partnerovi ${-r.confirmed} ks`}`)
+        .join("\n");
       for (const u of recipients) {
         await safely(async () => {
           const sent = await once(`limit:${c.id}:${pid}:${isoWeek(now)}:${u.email}`, { companyId: c.id, kind: "limit", sentTo: u.email }, () =>
@@ -104,7 +128,7 @@ export async function runNotifications(now = new Date()) {
               to: u.email,
               subject: `ObalBook: saldo s partnerem ${partner.name} přesáhlo limit`,
               text:
-                `Saldo obalů s partnerem ${partner.name} je ${total} ks (limit ${c.balanceAlertLimit} ks).\n${detail}\n\n` +
+                `Saldo obalů s partnerem ${partner.name} přesáhlo váš limit ${c.balanceAlertLimit} ks (celkem ${total} ks všech typů):\n${detail}\n\n` +
                 `Detail: ${appUrl(`/balances?partner=${pid}`)}\n\n---\nThe packaging balance with ${partner.name} exceeded your limit.`,
             }),
           );

@@ -293,10 +293,10 @@ export async function updatePartner(ctx: Ctx, id: string, input: unknown) {
     });
   });
   if (emailChange) {
-    await resendPartnerInvite(ctx, p.id);
-    // čekající pohyby dostanou nové odkazy na nový e-mail
-    const { resendAllPartnerLinks } = await import("./movements");
-    await resendAllPartnerLinks(p.id);
+    // změna je uložená – chyby odeslání ji nesmí shodit; čekající pohyby dostanou nové odkazy
+    const { resendAllPartnerLinks, safely } = await import("./movements");
+    await safely(() => resendPartnerInvite(ctx, p.id));
+    await safely(() => resendAllPartnerLinks(p.id));
   }
 }
 

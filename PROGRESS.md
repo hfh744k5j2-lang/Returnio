@@ -142,3 +142,17 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 **Rozhodnutí:**
 - Výkaz počítá potvrzené výdeje firmy (vratné i nevratné); obrátky = vydané kusy / průměrný oběh u partnerů. Cíle PPWR v procentech záměrně neuvádím – metodika ani přesné výpočty nejsou vydané.
 - Import vytváří jen navržené pohyby (partner je musí potvrdit) – import z vlastního ERP nesmí měnit sdílené saldo bez druhé strany.
+
+**Revize M6 (sub-agent) – 25 bodů; opraveny kritické a závažné:**
+- KRITICKÉ: import mohl při shodě kódu/názvu/e-mailu partnera tiše přiřadit pohyb jiné firmě → klíče jako množiny, víc shod = chyba na řádku („nejednoznačný, použijte kód“); v kontrole souhrn pohybů a kusů po partnerech. Test.
+- Dvojí import stejného souboru → každá skupina má otisk (`clientKey` = hash partner/den/druh/směr/DL/řádky), kontrola hlásí „už byl naimportován (P-…)“, průvodce se po importu vynuluje. Test.
+- „1.000“ / „1,5“ → jen celé číslo bez oddělovačů, jinak chyba na řádku. Test.
+- Metodika PPWR byla zčásti v SQL služby → `services/reports.ts` dodává surová data (všechny potvrzené řádky + salda), veškerá metodika (co se počítá, co je v oběhu, podíly, obrátky) je v `src/lib/ppwr.ts` (verze `obalbook-2026-2`). Testy metodiky.
+- Typ se změněnou vratností dával náhodný výsledek → řádek výkazu podle typu + vratnosti (deterministické). Test.
+- Podíl vratných nadhodnocený (neevidované kartony) → výrazné upozornění „počítáme jen obaly evidované v ObalBooku“ + ruční doplnění nevratných obalů mimo evidenci (ks, kg) do výpočtu i exportu. Test.
+- Desetinná čísla v CSV s tečkou → desetinná čárka; CSV výkazu má nahoře upozornění, období, metodu a počet nepotvrzených výdejů; sloupec vlastníka typu.
+- Připomínka „starší 3 dnů“ se počítala od vzniku pohybu a jen jednou → měří se od poslední změny (otevřený návrh opravy), klíč podle „tahu“; řazení od nejnovějších a strop 2 000.
+- Import nekontroloval vyřazený typ a limit 50 typů → chyba u řádku. Import čte uvnitř transakce jen přes `tx` (bezpečné s poolerem), limit 2 000 řádků.
+- Dvojznačný směr u ztráty/poškození/úpravy v importu → stejná slova jako v aplikaci („u partnera / u nás“, „partner dluží více / méně“); export píše směr slovy.
+- Drobné opraveny: atomická deduplikace upozornění (nejdřív zápis, pak odeslání), e-mail o limitu slovy po typech, předmět bez chybné gramatiky, odeslání nového odkazu zneplatní starší a zapíše se do auditu, změna e-mailu partnera se neshodí chybou odeslání, vzor `CRON_SECRET` ≥ 16 znaků, poznámky z více řádků skupiny se spojí, delší DL = chyba.
+- Do dluhu: aktér v auditu se odvozuje z aktuální firmy uživatele (odebraný zaměstnanec se zobrazí jako partner) – lepší snímek firmy v `AuditLog`; sloupec Podrobnosti v historii je surový JSON; export pohybů bez stropu (načítá vše do paměti); import zamyká partnerství po dobu transakce (souběžný ruční zápis počká).

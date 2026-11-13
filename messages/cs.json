@@ -351,7 +351,8 @@
         "counter_proposed": "navržena jiná oprava",
         "dispute_resolved": "rozpor vyřešen dohodou",
         "cancelled": "zrušeno",
-        "link_resent": "odkaz partnerovi znovu odeslán"
+        "link_resent": "odkaz partnerovi znovu odeslán",
+        "link_sent": "odkaz partnerovi odeslán"
       },
       "company": {
         "created": "firma zaregistrována",
@@ -427,7 +428,7 @@
     "intro": "Nahrajte export z ERP nebo Excelu. Sloupce přiřadíte k polím ObalBooku, soubor zkontrolujeme a pohyby vzniknou jako „čeká na potvrzení“ – partner je potvrdí jako ruční zápisy.",
     "stepFile": "Soubor",
     "file": "CSV soubor",
-    "fileHelp": "CSV oddělené středníkem nebo čárkou, s hlavičkou. Kódování UTF-8 nebo Windows-1250. Max. 5 000 řádků / 3 MB.",
+    "fileHelp": "CSV oddělené středníkem nebo čárkou, s hlavičkou. Kódování UTF-8 nebo Windows-1250. Max. 2 000 řádků / 3 MB.",
     "sample": "Stáhnout vzorový soubor",
     "tooBig": "Soubor je příliš velký (max. 3 MB).",
     "stepMapping": "Přiřazení sloupců",
@@ -443,7 +444,7 @@
       "note": "Poznámka"
     },
     "notMapped": "– nepoužít –",
-    "mappingHelp": "Řádky se stejným partnerem, dnem, druhem a dodacím listem spojíme do jednoho pohybu. Druh: výdej, příjem, vrácení, ztráta, poškození, oprava. Směr: „k nám“ nebo „od nás“.",
+    "mappingHelp": "Řádky se stejným partnerem, dnem, druhem a dodacím listem spojíme do jednoho pohybu. Druh: výdej, příjem, vrácení, ztráta, poškození, úprava salda. Směr: u vrácení „k nám“ / „od nás“, u ztráty a poškození „u partnera“ / „u nás“, u úpravy salda „partner dluží více“ / „partner dluží méně“. Počty jako celé číslo bez oddělovače tisíců.",
     "check": "Zkontrolovat soubor",
     "stepPreview": "Kontrola",
     "ready": "Bez chyb: {rows} řádků → {movements} pohybů.",
@@ -452,7 +453,10 @@
     "row": "Řádek {n}",
     "done": "Importováno {n} pohybů. Čekají na potvrzení partnery.",
     "showMovements": "Zobrazit",
-    "working": "Pracuji…"
+    "working": "Pracuji…",
+    "summaryMovements": "Pohybů",
+    "summaryPieces": "Kusů",
+    "checkPartners": "Zkontrolujte, že pohyby jsou přiřazené správným partnerům."
   },
   "ppwr": {
     "title": "Výkaz PPWR – podíl vratných obalů",
@@ -475,11 +479,16 @@
     "avgPool": "Průměrně u partnerů (ks)",
     "rotations": "Obrátky",
     "methodTitle": "Jak počítáme",
-    "method1": "Započítáváme potvrzené výdeje vaší firmy partnerům s datem v období (vratné i nevratné obaly).",
+    "method1": "Započítáváme potvrzené výdeje vaší firmy partnerům s datem v období (vratné i nevratné obaly evidované v ObalBooku) a ručně doplněné nevratné obaly mimo evidenci.",
     "method2": "Podíl vratných = vratné / všechny obaly, zvlášť v kusech a v kilogramech. Hmotnost a vratnost bereme ze stavu typu v okamžiku zápisu pohybu.",
     "method3": "Obrátky = vydané kusy v období / průměrný počet kusů u partnerů (kladné potvrzené saldo, průměr ze začátku a konce období).",
     "method4": "Nepotvrzené a rozporované pohyby nezapočítáváme.",
     "methodVersion": "Verze metodiky: {v}",
-    "exportCsv": "Export výkazu (CSV)"
+    "exportCsv": "Export výkazu (CSV)",
+    "extraPieces": "Nevratné mimo evidenci (ks)",
+    "extraKg": "Nevratné mimo evidenci (kg)",
+    "extraRow": "Nevratné obaly mimo evidenci (doplněno ručně)",
+    "owner": "Vlastník",
+    "warningScope": "Počítáme jen obaly evidované v ObalBooku. Nevratné obaly, které neevidujete (kartony, fólie…), doplňte ručně níže – jinak bude podíl vratných nadhodnocený."
   }
 }

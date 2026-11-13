@@ -115,11 +115,16 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   assertCan(ctx.role, "movements.create");
   const data = parse(createMovementSchema, input);
   if (!BASIC_KINDS.includes(data.kind)) assertCan(ctx.role, "movements.createSpecial");
-  const p = await getPartnershipRaw(ctx, data.partnershipId);
+  // uvnitř importu čteme přes transakci (jedno připojení – bezpečné i s poolerem connection_limit=1)
+  const db = opts.tx ?? prisma;
+  const p = opts.tx
+    ? await opts.tx.partnership.findFirst({ where: { id: data.partnershipId, ...partnershipScope(ctx.companyId) }, include: { companyA: true, companyB: true } })
+    : await getPartnershipRaw(ctx, data.partnershipId);
+  if (!p) throw notFound("Partner");
   const side = sideOf(p, ctx.companyId);
   if (data.clientKey) {
     // dvojí odeslání formuláře → vrátíme už uložený pohyb
-    const existing = await prisma.movement.findFirst({ where: { partnershipId: p.id, clientKey: data.clientKey }, include: { lines: true } });
+    const existing = await db.movement.findFirst({ where: { partnershipId: p.id, clientKey: data.clientKey }, include: { lines: true } });
     if (existing) return existing;
   }
   const fixed = FIXED_DIRECTION[data.kind];
@@ -129,7 +134,7 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
 
   // Typy obalů musí patřit jedné ze stran partnerství (žádné cizí ID).
   const companyIds = [p.companyAId, p.companyBId].filter((x): x is string => Boolean(x));
-  const types = await prisma.packagingType.findMany({
+  const types = await db.packagingType.findMany({
     // i neaktivní typ – jinak by nešlo vrátit obaly, které u partnera zůstaly
     where: { id: { in: data.lines.map((l) => l.packagingTypeId) }, companyId: { in: companyIds } },
   });
@@ -261,6 +266,16 @@ export async function sendPartnerLink(movementId: string) {
   const open = m.corrections[0];
   const proposed = new Map(((open?.lines ?? []) as { packagingTypeId: string; quantity: number }[]).map((l) => [l.packagingTypeId, l.quantity]));
   const { token, hash } = newToken();
+  // u jednoho pohybu platí vždy jen nejnovější odkaz
+  await prisma.partnerLinkToken.updateMany({ where: { movementId: m.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { expiresAt: new Date() } });
+  await audit(prisma, {
+    actor: { label: "systém" },
+    partnershipId: m.partnershipId,
+    action: "movement.link_sent",
+    entityType: "Movement",
+    entityId: m.id,
+    data: { to: "partner" },
+  });
   await prisma.partnerLinkToken.create({
     data: {
       tokenHash: hash,

@@ -61,7 +61,7 @@ test("M6: výkaz PPWR, export CSV, historie změn; skladník k nim nemá příst
   await page.getByRole("link", { name: "Export výkazu (CSV)" }).click();
   const csv = readFileSync(await (await dl).path(), "utf8");
   expect(csv).toContain("ORIENTAČNÍ");
-  expect(csv).toContain("podil_vratnych_ks_%;60.0");
+  expect(csv).toContain("podil_vratnych_ks_%;60,0");
 
   await page.goto("/movements");
   const dl2 = page.waitForEvent("download");
