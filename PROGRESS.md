@@ -156,3 +156,15 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 - Dvojznačný směr u ztráty/poškození/úpravy v importu → stejná slova jako v aplikaci („u partnera / u nás“, „partner dluží více / méně“); export píše směr slovy.
 - Drobné opraveny: atomická deduplikace upozornění (nejdřív zápis, pak odeslání), e-mail o limitu slovy po typech, předmět bez chybné gramatiky, odeslání nového odkazu zneplatní starší a zapíše se do auditu, změna e-mailu partnera se neshodí chybou odeslání, vzor `CRON_SECRET` ≥ 16 znaků, poznámky z více řádků skupiny se spojí, delší DL = chyba.
 - Do dluhu: aktér v auditu se odvozuje z aktuální firmy uživatele (odebraný zaměstnanec se zobrazí jako partner) – lepší snímek firmy v `AuditLog`; sloupec Podrobnosti v historii je surový JSON; export pohybů bez stropu (načítá vše do paměti); import zamyká partnerství po dobu transakce (souběžný ruční zápis počká).
+
+## M7 Ukázková data a předání – hotovo
+
+**Hotové:**
+- `prisma/seed.ts` (`npm run db:seed`): 3 smyšlené firmy (pivovar CZ, velkoobchod CZ, hurtownia PL) po 3 uživatelích (admin/logistik/sklad), 5 typů obalů (EUR paleta, přepravka, sud KEG, nevratný karton – pivovar; plastová paleta H1 – velkoobchod), 3 registrovaná partnerství + neregistrovaná restaurace, **300 pohybů za 6 měsíců**: výdeje, vratky (i zapsané partnerem), příjmy, ztráty, poškození, úpravy salda; 7 rozporů vyřešených dohodou (část s protinávrhem), 4 otevřené rozpory, 8 čekajících, 3 zrušené. Data se zapisují přes stejné služby jako aplikace (vzniká auditní stopa), jsou deterministická a saldo zůstává realistické (vratky vracejí část vydaného). Seed odmítne běžet, pokud data už existují.
+- README: funkce, lokální spuštění (Docker Compose, migrace, seed, přihlášení magic linkem z konzole, tabulka ukázkových účtů), testy, nasazení **Vercel + Supabase EU** (pooler/direct URL, Resend/SMTP, proměnné, region, cron), struktura, upozornění k PPWR. Skript `vercel-build` (generate + migrate deploy + build).
+- Polština kompletní v `messages/pl.json` (402 klíčů); test hlídá shodu klíčů i proměnných `{x}` ve všech jazycích. V přepínači jsou CS/EN dle zadání.
+- Snímky hlavních toků (`docs/screenshots/01–13`, z Playwrightu) a video celého toku `docs/video/hlavni-tok.webm`.
+
+**Testováno:** `npm run check` OK (82 unit testů). Playwright – 19 testů OK, z toho `m7-seed-flow.spec.ts` = definice „hotovo“ ze zadání: seed → skutečné přihlášení magic linkem (pivovar) a přihlášení za všechny 3 firmy → výdej (skladník pivovaru) → potvrzení (skladník velkoobchodu) → rozpor (30 → 27) → vyřešení (logistik pivovaru přijme) → saldo zrcadlově u obou stran → výkaz PPWR za 6 měsíců → export CSV salda a pohybů (ověřen obsah) → anglické rozhraní a historie změn.
+
+**Rozhodnutí:** vývojový „rychlý login“ bez e-mailu jsem nepřidal (riziko zapnutí v produkci); v dev se magic link vypíše do konzole. Ukázkové domény `*.example` (rezervované, nikdy skutečné).

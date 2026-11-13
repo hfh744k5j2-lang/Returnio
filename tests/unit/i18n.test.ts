@@ -20,7 +20,8 @@ describe("překlady", () => {
     expect([...en].filter((k) => !cs.has(k))).toEqual([]);
   });
 
-  it("polština neobsahuje neznámé klíče (chybějící se doplní z angličtiny)", () => {
+  it("polština má stejné klíče jako čeština (připravená v souborech překladů)", () => {
+    expect([...cs].filter((k) => !pl.has(k))).toEqual([]);
     expect([...pl].filter((k) => !cs.has(k))).toEqual([]);
   });
 
@@ -33,6 +34,16 @@ describe("překlady", () => {
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  it("proměnné {x} jsou ve všech jazycích stejné", () => {
+    const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(",");
+    const bad: string[] = [];
+    for (const k of cs) {
+      const c = vars(makeT("cs")(k));
+      if (vars(makeT("en")(k)) !== c || vars(makeT("pl")(k)) !== c) bad.push(k);
+    }
+    expect(bad).toEqual([]);
   });
 
   it("dosazuje proměnné a má fallback", () => {
