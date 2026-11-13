@@ -160,7 +160,7 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 ## M7 Ukázková data a předání – hotovo
 
 **Hotové:**
-- `prisma/seed.ts` (`npm run db:seed`): 3 smyšlené firmy (pivovar CZ, velkoobchod CZ, hurtownia PL) po 3 uživatelích (admin/logistik/sklad), 5 typů obalů (EUR paleta, přepravka, sud KEG, nevratný karton – pivovar; plastová paleta H1 – velkoobchod), 3 registrovaná partnerství + neregistrovaná restaurace, **300 pohybů za 6 měsíců**: výdeje, vratky (i zapsané partnerem), příjmy, ztráty, poškození, úpravy salda; 7 rozporů vyřešených dohodou (část s protinávrhem), 4 otevřené rozpory, 8 čekajících, 3 zrušené. Data se zapisují přes stejné služby jako aplikace (vzniká auditní stopa), jsou deterministická a saldo zůstává realistické (vratky vracejí část vydaného). Seed odmítne běžet, pokud data už existují.
+- `prisma/seed.ts` (`npm run db:seed`): 3 smyšlené firmy (pivovar CZ, velkoobchod CZ, hurtownia PL) po 3 uživatelích (admin/logistik/sklad), 5 typů obalů (EUR paleta, přepravka, sud KEG, nevratný karton – pivovar; plastová paleta H1 – velkoobchod), 3 registrovaná partnerství + neregistrovaná restaurace, **300 pohybů za 6 měsíců**: výdeje, vratky (i zapsané partnerem), příjmy, ztráty, poškození, úpravy salda; 12 rozporů vyřešených dohodou (část s protinávrhem), 5 otevřených rozporů, 14 čekajících, 5 zrušených. Všechny 3 firmy vydávají (i hurtownia na paletách H1), takže každá má vlastní výkaz PPWR. Data se zapisují přes stejné služby jako aplikace (vzniká auditní stopa), jsou deterministická a saldo zůstává realistické (vratky vracejí část vydaného). Seed odmítne běžet, pokud data už existují.
 - README: funkce, lokální spuštění (Docker Compose, migrace, seed, přihlášení magic linkem z konzole, tabulka ukázkových účtů), testy, nasazení **Vercel + Supabase EU** (pooler/direct URL, Resend/SMTP, proměnné, region, cron), struktura, upozornění k PPWR. Skript `vercel-build` (generate + migrate deploy + build).
 - Polština kompletní v `messages/pl.json` (402 klíčů); test hlídá shodu klíčů i proměnných `{x}` ve všech jazycích. V přepínači jsou CS/EN dle zadání.
 - Snímky hlavních toků (`docs/screenshots/01–13`, z Playwrightu) a video celého toku `docs/video/hlavni-tok.webm`.
@@ -168,3 +168,20 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 **Testováno:** `npm run check` OK (82 unit testů). Playwright – 19 testů OK, z toho `m7-seed-flow.spec.ts` = definice „hotovo“ ze zadání: seed → skutečné přihlášení magic linkem (pivovar) a přihlášení za všechny 3 firmy → výdej (skladník pivovaru) → potvrzení (skladník velkoobchodu) → rozpor (30 → 27) → vyřešení (logistik pivovaru přijme) → saldo zrcadlově u obou stran → výkaz PPWR za 6 měsíců → export CSV salda a pohybů (ověřen obsah) → anglické rozhraní a historie změn.
 
 **Rozhodnutí:** vývojový „rychlý login“ bez e-mailu jsem nepřidal (riziko zapnutí v produkci); v dev se magic link vypíše do konzole. Ukázkové domény `*.example` (rezervované, nikdy skutečné).
+
+**Revize M7 (sub-agent) – 14 bodů, kritické žádné; opraveny:**
+- Seed se mohl rozbít chybou odesílání e-mailu a pak nešel zopakovat → seed nikdy neposílá e-maily ven (dočasně vypne Resend/SMTP, `EMAIL_SILENT` se kontroluje jako první a jen mimo produkci), v produkci vyžaduje `SEED_ALLOW=1`, při chybě vypíše návod.
+- Tok ze sekce 8 byl celý ověřený jen za 2 firmy a saldo jen zrcadlově → hurtownia v testu sama vydá, velkoobchod potvrdí, saldo ověřeno přesným rozdílem (+12), výkaz PPWR hurtownie má data; saldo pivovaru ověřeno přesně (před + 24 + 27). Seed obsahuje výdeje hurtownie.
+- Drobné opraveny: otisk importu obsahuje firmu a ignoruje zrušené pohyby; souběžný dvojí import nevytvoří prázdnou dávku ani nerozešle odkazy znovu; odkaz partnerovi jen když je na tahu; chronologie historie v ukázkových datech (kroky po sobě, nic v budoucnosti) a řazení auditu i podle id; polská firma má jazyk `pl`; validace doplňků výkazu v exportu; souhrn importu podle partnera (ID + kód); připomínky nejdřív pro nejstarší pohyby; README (session pooler pro `DIRECT_URL`, Preview nasazení s vlastní DB, `db:migrate:dev`, `db:reset`, testovací DB); snímky a video jen s `DOCS_SHOTS=1`, jednotné číslování, mobilní snímky bez překryvu hlavičky.
+- Do dluhu: výkaz PPWR načítá všechny potvrzené řádky firmy do data „do“ (u velkých objemů pomalé – předfiltr by měl vystavit modul `ppwr.ts`); souhrn importu sčítá kusy různých typů do jednoho čísla (jen orientační kontrola přiřazení partnerů); tlačítko „Uložit výdej: 15 ks“ ve skenování také sčítá kusy všech typů.
+
+**Kontrola M7:** `npm run check` OK (82 unit testů), Playwright 19/19 OK.
+
+---
+
+## Hotovo (sekce 8 zadání)
+
+- [x] `npm run check` a všechny Playwright testy projdou (82 unit + 19 e2e, desktop i mobil).
+- [x] Ze seed dat jde přihlásit jako každá ze 3 firem a projít výdej → potvrzení → rozpor → vyřešení → saldo → výkaz PPWR → export CSV (`tests/e2e/m7-seed-flow.spec.ts`, video `docs/video/hlavni-tok.webm`).
+- [x] README popisuje lokální spuštění a nasazení (Vercel + Supabase EU).
+- [x] PROGRESS.md obsahuje záznam kontroly (check, Playwright, revize sub-agentem, opravy, dluh) ke každému milníku M1–M7.

@@ -288,10 +288,10 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
   });
 
   // opakovaný import stejného souboru: každá skupina má otisk; existující pohyb = chyba u řádku
-  const keyed = [...groups.values()].map((g) => ({ ...g, clientKey: groupKey(g) }));
+  const keyed = [...groups.values()].map((g) => ({ ...g, clientKey: groupKey(g, ctx.companyId) }));
   const existing = keyed.length
     ? await prisma.movement.findMany({
-        where: { OR: keyed.map((g) => ({ partnershipId: g.partnershipId, clientKey: g.clientKey })) },
+        where: { status: { not: "CANCELLED" }, OR: keyed.map((g) => ({ partnershipId: g.partnershipId, clientKey: g.clientKey })) },
         select: { partnershipId: true, clientKey: true, number: true },
       })
     : [];
@@ -300,17 +300,19 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
     if (ex) errors.push({ row: g.rows[0], message: `Tento pohyb už byl naimportován dříve (P-${String(ex.number).padStart(6, "0")}). Řádky ${g.rows.join(", ")}.` });
   }
   const names = new Map(partners.map((p) => [p.id, p.name]));
+  const codes = new Map(partners.map((p) => [p.id, p.code]));
   const summary = [...new Set(keyed.map((g) => g.partnershipId))].map((pid) => ({
-    partner: names.get(pid) ?? "",
+    partnershipId: pid,
+    partner: `${names.get(pid) ?? ""} (${codes.get(pid) ?? ""})`,
     movements: keyed.filter((g) => g.partnershipId === pid).length,
     pieces: keyed.filter((g) => g.partnershipId === pid).reduce((s, g) => s + [...g.lines.values()].reduce((a, b) => a + b, 0), 0),
   }));
   return { rows: rows.length, errors: errors.sort((a, b) => a.row - b.row), groups: keyed, summary };
 }
 
-function groupKey(g: Group): string {
+function groupKey(g: Group, companyId: string): string {
   const lines = [...g.lines.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([t, q]) => `${t}:${q}`).join(",");
-  const raw = [g.partnershipId, g.date.toISOString().slice(0, 10), g.kind, g.direction ?? "", g.deliveryNote ?? "", lines].join("|");
+  const raw = [companyId, g.partnershipId, g.date.toISOString().slice(0, 10), g.kind, g.direction ?? "", g.deliveryNote ?? "", lines].join("|");
   return `imp:${createHash("sha256").update(raw).digest("hex").slice(0, 40)}`;
 }
 
@@ -359,7 +361,8 @@ export async function runImport(ctx: Ctx, text: string, mapping: ImportMapping, 
               },
               { importBatchId: batch.id, tx },
             );
-            ids.push(m.id);
+            // souběžný import: pohyb už existoval (stejný otisk) → nezapočítat jako nový
+            if (m.importBatchId === batch.id) ids.push(m.id);
           }
           await audit(tx, {
             actor: { userId: ctx.userId },
@@ -369,6 +372,8 @@ export async function runImport(ctx: Ctx, text: string, mapping: ImportMapping, 
             entityId: batch.id,
             data: { fileName, rows, movements: groups.length },
           });
+          if (ids.length === 0) throw invalid("Tento soubor už byl naimportován.");
+          await tx.importBatch.update({ where: { id: batch.id }, data: { movementCount: ids.length } });
           return { batchId: batch.id, ids };
         },
         { timeout: 60_000, maxWait: 10_000 },

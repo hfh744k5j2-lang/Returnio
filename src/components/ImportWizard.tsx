@@ -8,7 +8,7 @@ const FIELDS = ["date", "partner", "kind", "packaging", "quantity", "deliveryNot
 const REQUIRED = new Set(["date", "partner", "kind", "packaging", "quantity"]);
 type Mapping = Partial<Record<(typeof FIELDS)[number], string>>;
 type Analysis = { headers: string[]; sample: Record<string, string>[]; rowCount: number; mapping: Mapping };
-type Preview = { rows: number; movements: number; errors: { row: number; message: string }[]; errorCount: number; summary?: { partner: string; movements: number; pieces: number }[] };
+type Preview = { rows: number; movements: number; errors: { row: number; message: string }[]; errorCount: number; summary?: { partnershipId: string; partner: string; movements: number; pieces: number }[] };
 
 export function ImportWizard({
   analyze,
@@ -121,7 +121,7 @@ export function ImportWizard({
               {prev.summary && (
                 <table className="table text-sm">
                   <thead><tr><th>{t("common.partner")}</th><th className="text-right">{t("import.summaryMovements")}</th><th className="text-right">{t("import.summaryPieces")}</th></tr></thead>
-                  <tbody>{prev.summary.map((s) => <tr key={s.partner}><td>{s.partner}</td><td className="text-right">{s.movements}</td><td className="text-right">{s.pieces}</td></tr>)}</tbody>
+                  <tbody>{prev.summary.map((s) => <tr key={s.partnershipId}><td>{s.partner}</td><td className="text-right">{s.movements}</td><td className="text-right">{s.pieces}</td></tr>)}</tbody>
                 </table>
               )}
               <p className="muted">{t("import.checkPartners")}</p>

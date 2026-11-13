@@ -55,7 +55,7 @@ test("M6: výkaz PPWR, export CSV, historie změn; skladník k nim nemá příst
   await expect(page.getByTestId("ppwr-warning")).toContainText("Orientační výpočet");
   await expect(page.getByTestId("share-pieces")).toHaveText("60,0 %");
   await expect(page.getByTestId("share-weight")).toContainText("97,4 %");
-  await shot(page, "09-vykaz-ppwr");
+  await shot(page, "09b-vykaz-ppwr-maly");
 
   const dl = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export výkazu (CSV)" }).click();

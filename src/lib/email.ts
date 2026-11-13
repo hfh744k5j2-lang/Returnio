@@ -19,6 +19,8 @@ export async function sendEmail(mail: Mail): Promise<void> {
   if (devOutboxEnabled()) {
     await prisma.devEmail.create({ data: mail });
   }
+  // tichý režim (testy, seed) – nikdy neposílá ven; v produkci se ignoruje
+  if (process.env.EMAIL_SILENT === "1" && process.env.NODE_ENV !== "production") return;
   if (process.env.RESEND_API_KEY) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -34,7 +36,6 @@ export async function sendEmail(mail: Mail): Promise<void> {
     await transport.sendMail({ from, to: mail.to, subject: mail.subject, text: mail.text });
     return;
   }
-  if (process.env.EMAIL_SILENT === "1") return;
   if (process.env.NODE_ENV === "production" && process.env.EMAIL_DEV_OUTBOX !== "1") {
     throw new Error("E-mail není nakonfigurován: nastavte RESEND_API_KEY nebo SMTP_URL.");
   }

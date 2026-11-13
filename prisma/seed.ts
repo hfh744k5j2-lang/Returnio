@@ -29,14 +29,15 @@ function rng(seed: number) {
 }
 
 async function makeUser(email: string, name: string) {
-  return prisma.user.create({ data: { email, name, emailVerified: new Date(), locale: email.endsWith("wisla-hurt.example") ? "en" : "cs" } });
+  return prisma.user.create({ data: { email, name, emailVerified: new Date(), locale: email.endsWith("wisla-hurt.example") ? "pl" : "cs" } });
 }
 
 async function company(emails: { admin: string; logistik: string; sklad: string }, data: { name: string; regNumber: string; country: string; address: string }, names: [string, string, string]) {
   const admin = await makeUser(emails.admin, names[0]);
   const c = await createCompanyForUser(admin.id, data);
-  const logistik = await prisma.user.create({ data: { email: emails.logistik, name: names[1], companyId: c.id, role: "LOGISTIK", emailVerified: new Date() } });
-  const sklad = await prisma.user.create({ data: { email: emails.sklad, name: names[2], companyId: c.id, role: "SKLAD", emailVerified: new Date() } });
+  const locale = admin.locale;
+  const logistik = await prisma.user.create({ data: { email: emails.logistik, name: names[1], companyId: c.id, role: "LOGISTIK", emailVerified: new Date(), locale } });
+  const sklad = await prisma.user.create({ data: { email: emails.sklad, name: names[2], companyId: c.id, role: "SKLAD", emailVerified: new Date(), locale } });
   const ctx = (u: { id: string; email: string; name: string | null }, role: Ctx["role"]): Ctx => ({ userId: u.id, companyId: c.id, role, email: u.email, name: u.name });
   return { company: c, admin: ctx(admin, "ADMIN"), logistik: ctx(logistik, "LOGISTIK"), sklad: ctx(sklad, "SKLAD") };
 }
@@ -44,11 +45,27 @@ async function company(emails: { admin: string; logistik: string; sklad: string 
 export async function seed(opts: { movements?: number; now?: Date } = {}) {
   const total = opts.movements ?? 300;
   const now = opts.now ?? new Date();
+  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW !== "1") {
+    throw new Error("Seed v produkci jen s SEED_ALLOW=1 (a jen do demo databáze).");
+  }
   if (await prisma.user.findUnique({ where: { email: SEED_USERS.pivovar.admin } })) {
     console.log("Ukázková data už v databázi jsou – nic nedělám.");
     return null;
   }
-  process.env.EMAIL_SILENT = "1";
+  process.env.EMAIL_SILENT = "1"; // ukázková data nikdy neposílají e-maily ven
+  const prevResend = process.env.RESEND_API_KEY;
+  const prevSmtp = process.env.SMTP_URL;
+  delete process.env.RESEND_API_KEY;
+  delete process.env.SMTP_URL;
+  try {
+    return await seedInner(total, now);
+  } finally {
+    if (prevResend) process.env.RESEND_API_KEY = prevResend;
+    if (prevSmtp) process.env.SMTP_URL = prevSmtp;
+  }
+}
+
+async function seedInner(total: number, now: Date) {
 
   const piv = await company(
     SEED_USERS.pivovar,
@@ -89,7 +106,9 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
   const routes: Route[] = [
     { p: pPV, from: piv, to: vel, types: [{ id: eur.id, q: [10, 33] }, { id: box.id, q: [40, 200] }, { id: keg.id, q: [5, 30] }, { id: krt.id, q: [50, 400] }], weight: 0.45 },
     { p: pPH, from: piv, to: hur, types: [{ id: eur.id, q: [15, 33] }, { id: keg.id, q: [10, 40] }, { id: krt.id, q: [100, 600] }], weight: 0.25 },
-    { p: pVH, from: vel, to: hur, types: [{ id: h1.id, q: [5, 26] }], weight: 0.2 },
+    { p: pVH, from: vel, to: hur, types: [{ id: h1.id, q: [5, 26] }], weight: 0.13 },
+    // hurtownia vydává velkoobchodu zboží na paletách H1 (aby měla i vlastní výkaz PPWR)
+    { p: pVH, from: hur, to: vel, types: [{ id: h1.id, q: [4, 18] }], weight: 0.07 },
     { p: pPU, from: piv, to: null, types: [{ id: keg.id, q: [2, 8] }, { id: box.id, q: [5, 20] }], weight: 0.1 },
   ];
   const r = rng(20261112);
@@ -150,7 +169,7 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
     const lines = chosen
       .map((t) => {
         const [a, b] = t.q;
-        const key = `${route.p}|${t.id}`;
+        const key = `${routes.indexOf(route)}|${t.id}`;
         const outNow = outstanding.get(key) ?? 0;
         let q: number;
         if (kind === "ISSUE") q = between(a, b);
@@ -160,7 +179,7 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
       })
       .filter((l) => l.quantity > 0);
     for (const l of lines) {
-      const key = `${route.p}|${l.packagingTypeId}`;
+      const key = `${routes.indexOf(route)}|${l.packagingTypeId}`;
       const t = types.find((x) => x.id === l.packagingTypeId);
       if (!t?.reusable) continue;
       const sign = kind === "ISSUE" || (kind === "CORRECTION" && direction === "OUT") ? 1 : -1;
@@ -182,10 +201,12 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
     const other = [owner, partnerSide].find((c) => c && c.company.id !== creatorCompany) ?? null;
     const age = (now.getTime() - date.getTime()) / DAY;
     const fate = r();
-    const createdAt = new Date(date.getTime() + between(7, 16) * 3600 * 1000);
+    const cap = (d: Date) => new Date(Math.min(d.getTime(), now.getTime() - 60_000));
+    const createdAt = cap(new Date(date.getTime() + between(7, 16) * 3600 * 1000));
     await prisma.movement.update({ where: { id: m.id }, data: { createdAt } });
 
     if (!other) {
+      await prisma.auditLog.updateMany({ where: { entityId: m.id }, data: { createdAt } });
       // neregistrovaný partner: starší pohyby potvrzené přes odkaz, nejnovější čekají
       if (age > 10) {
         const link = await prisma.partnerLinkToken.findFirst({ where: { movementId: m.id } });
@@ -233,7 +254,7 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
     // generátor: do odhadu „u partnera“ počítat jen potvrzené pohyby (jinak by vratky přestřelily)
     const final = await prisma.movement.findUniqueOrThrow({ where: { id: m.id }, include: { lines: true } });
     for (const l of final.lines) {
-      const key = `${route.p}|${l.packagingTypeId}`;
+      const key = `${routes.indexOf(route)}|${l.packagingTypeId}`;
       if (!types.find((x) => x.id === l.packagingTypeId)?.reusable) continue;
       const sign = kind === "ISSUE" || (kind === "CORRECTION" && direction === "OUT") ? 1 : -1;
       const counted = l.quantity;
@@ -241,11 +262,22 @@ export async function seed(opts: { movements?: number; now?: Date } = {}) {
       outstanding.set(key, Math.max(0, (outstanding.get(key) ?? 0) + sign * (real - counted)));
     }
     // časy potvrzení a auditu posunout k datu pohybu (realistická historie)
-    const later = new Date(createdAt.getTime() + between(2, 40) * 3600 * 1000);
-    await prisma.movement.updateMany({ where: { id: m.id, confirmedAt: { not: null } }, data: { confirmedAt: later } });
+    // realistická chronologie: vznik → další kroky po hodinách, nikdy v budoucnosti
     await prisma.auditLog.updateMany({ where: { entityId: m.id, action: "movement.created" }, data: { createdAt } });
-    await prisma.auditLog.updateMany({ where: { entityId: m.id, action: { not: "movement.created" } }, data: { createdAt: later } });
-    await prisma.movementCorrection.updateMany({ where: { movementId: m.id }, data: { createdAt: later } });
+    const steps = await prisma.auditLog.findMany({ where: { entityId: m.id, action: { not: "movement.created" } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+    let tick = createdAt.getTime();
+    for (const st of steps) {
+      tick += between(2, 20) * 3600 * 1000;
+      const at = cap(new Date(tick));
+      await prisma.auditLog.update({ where: { id: st.id }, data: { createdAt: at } });
+      if (st.action === "movement.disputed" || st.action === "movement.counter_proposed") {
+        const cid = (st.data as { correctionId?: string } | null)?.correctionId;
+        if (cid) await prisma.movementCorrection.update({ where: { id: cid }, data: { createdAt: at } });
+      }
+      if (st.action === "movement.confirmed" || st.action === "movement.dispute_resolved") {
+        await prisma.movement.update({ where: { id: m.id }, data: { confirmedAt: at } });
+      }
+    }
   }
   // ukázková data nemají spouštět e-maily z minulosti: staré e-maily z dev schránky pryč
   await prisma.devEmail.deleteMany({});
@@ -265,6 +297,7 @@ if (require.main === module) {
     })
     .catch((e) => {
       console.error(e);
+      console.error("\nSeed selhal. Databázi s napůl vytvořenými ukázkovými daty vyprázdněte (npx prisma migrate reset – smaže VŠECHNA data!) a spusťte seed znovu.");
       process.exit(1);
     })
     .finally(() => prisma.$disconnect());

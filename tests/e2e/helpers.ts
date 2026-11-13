@@ -47,8 +47,12 @@ export function linkFrom(text: string, pathPart: string) {
   return m[0];
 }
 
+/** Snímky do docs/ jen s DOCS_SHOTS=1 (běžný běh testů nemění verzované soubory). */
 export async function shot(page: Page, name: string) {
-  await page.screenshot({ path: `docs/screenshots/${name}.png`, fullPage: true });
+  if (process.env.DOCS_SHOTS !== "1") return;
+  // na telefonu jen viditelná část (lepivá hlavička by se ve snímku celé stránky překrývala)
+  const mobile = (page.viewportSize()?.width ?? 1280) < 600;
+  await page.screenshot({ path: `docs/screenshots/${name}.png`, fullPage: !mobile });
 }
 
 export async function createPackaging(companyId: string, code: string, opts: { reusable?: boolean; weightKg?: number; name?: string } = {}) {

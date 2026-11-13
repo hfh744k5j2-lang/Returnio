@@ -47,6 +47,8 @@ test("M7: seed + přihlášení za 3 firmy + hlavní tok až po export", async (
 
   // 2) výdej – skladník pivovaru vydá velkoobchodu 24 EUR palet a 6 sudů
   await as(context, SEED_USERS.pivovar.sklad);
+  await page.goto("/balances");
+  const eurBefore = Number(await page.locator("section[data-testid=balance-partner]", { hasText: "Nápojový velkoobchod Morava" }).locator("tr[data-type=EUR] [data-balance]").getAttribute("data-balance"));
   const morava = await db.partnership.findFirstOrThrow({ where: { code: "MORAVA", companyA: { name: { startsWith: "Pivovar" } } } });
   await page.goto("/movements/new");
   await page.getByLabel("Partner", { exact: true }).selectOption(morava.id);
@@ -92,7 +94,7 @@ test("M7: seed + přihlášení za 3 firmy + hlavní tok až po export", async (
   await expect(page.getByText("Tři palety zůstaly na návěsu")).toBeVisible();
   await page.getByRole("button", { name: "Přijmout opravu" }).click();
   await expect(page.locator("[data-status=CONFIRMED]")).toBeVisible();
-  await shot(page, "08-rozpor-vyresen");
+  await shot(page, "07b-rozpor-vyresen");
 
   // 6) saldo – obě strany vidí totéž (zrcadlově)
   const balanceRow = async () => (await page.locator("section[data-testid=balance-partner]", { hasText: "Nápojový velkoobchod Morava" }).locator("tr[data-type=EUR]").getAttribute("data-type")) && page.locator("section[data-testid=balance-partner]", { hasText: "Nápojový velkoobchod Morava" }).locator("tr[data-type=EUR] [data-balance]").getAttribute("data-balance");
@@ -103,6 +105,7 @@ test("M7: seed + přihlášení za 3 firmy + hlavní tok až po export", async (
   await page.goto("/balances");
   const velEur = Number(await page.locator("section[data-testid=balance-partner]", { hasText: "Pivovar Zlatý Ječmen" }).locator("tr[data-type=EUR] [data-balance]").getAttribute("data-balance"));
   expect(velEur).toBe(-pivEur);
+  expect(pivEur).toBe(eurBefore + 24 + 27); // potvrzený výdej 24 + rozpor vyřešený na 27
 
   // 7) výkaz PPWR za posledních 6 měsíců
   await as(context, SEED_USERS.pivovar.logistik);
@@ -138,6 +141,29 @@ test("M7: seed + přihlášení za 3 firmy + hlavní tok až po export", async (
   await page.goto("/audit");
   await shot(page, "13-historie-zmen");
 
+  // hurtownia (3. firma): vlastní výdej → potvrzení velkoobchodem → saldo s přesným rozdílem → výkaz
+  const vh = await db.partnership.findFirstOrThrow({ where: { code: "WISLA", companyA: { name: { startsWith: "Nápojový" } } } });
+  const h1Balance = async (selector: string) =>
+    Number((await page.locator("section[data-testid=balance-partner]", { hasText: selector }).locator("tr[data-type=H1] [data-balance]").getAttribute("data-balance")) ?? 0);
+  await page.goto("/balances");
+  const hurBefore = await h1Balance("Nápojový velkoobchod Morava");
+  await as(context, SEED_USERS.hurtownia.sklad);
+  await page.goto("/movements/new");
+  await page.getByLabel("Partner", { exact: true }).selectOption(vh.id);
+  await page.getByLabel("Počet Plastová paleta H1").fill("12");
+  await page.getByRole("button", { name: /Uložit výdej/ }).click();
+  await expect(page.getByText(/uložen\./)).toBeVisible();
+  const hurUrl = page.url().replace(/\?.*/, "");
+  await as(context, SEED_USERS.velkoobchod.sklad);
+  await page.goto(hurUrl);
+  await page.getByRole("button", { name: "Ano, počty souhlasí – potvrdit" }).click();
+  await expect(page.locator("[data-status=CONFIRMED]")).toBeVisible();
+  await as(context, SEED_USERS.hurtownia.logistik);
+  await page.goto("/balances");
+  expect(await h1Balance("Nápojový velkoobchod Morava")).toBe(hurBefore + 12);
+  await page.goto(`/reports/ppwr?from=${from}&to=${to}`);
+  await expect(page.getByTestId("ppwr-table")).toContainText("H1");
+
   await page.close();
-  await page.video()?.saveAs("docs/video/hlavni-tok.webm");
+  if (process.env.DOCS_SHOTS === "1") await page.video()?.saveAs("docs/video/hlavni-tok.webm");
 });

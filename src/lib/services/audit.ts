@@ -36,7 +36,7 @@ async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string;
     prisma.auditLog.findMany({
       where,
       include: { user: { select: { email: true, companyId: true, company: { select: { name: true } } } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

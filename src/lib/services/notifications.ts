@@ -55,7 +55,7 @@ export async function runNotifications(now = new Date()) {
       ],
     },
     include: { partnership: { include: { companyA: true, companyB: true } }, corrections: { where: { status: "OPEN" } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: "asc" }, // nejstarší čekají nejdéle – mají přednost
     take: 2000,
   });
   const digest = new Map<string, { companyId: string | null; items: { key: string; line: string }[] }>();

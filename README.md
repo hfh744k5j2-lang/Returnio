@@ -62,11 +62,14 @@ Doporučená prohlídka: přihlaste se jako `sklad@zlatyjecmen.example` → **No
 
 Upozornění ručně: `npm run notify`.
 
+Další skripty: `npm run db:migrate:dev` (nová migrace při změně schématu), `npm run db:reset` (smaže **všechna** data lokální DB a aplikuje migrace znovu – jen pro vývoj). Testovací DB `obalbook_test` vytvoří Docker Compose jen při prvním vytvoření volume; jinak: `docker compose exec db createdb -U postgres obalbook_test`.
+
 ## Testy
 
 ```bash
 npm run check   # eslint (0 varování) + tsc + vitest (logika, saldo, PPWR, import, oddělení dat)
 npm run e2e     # Playwright: build + start na portu 3100 proti DB obalbook_test
+DOCS_SHOTS=1 npm run e2e   # navíc přegeneruje snímky docs/screenshots a video docs/video
 ```
 
 Testy používají `.env.test` (testovací DB `obalbook_test`, žádná tajemství). Před během se testovací DB vyprázdní – skript `tests/reset-test-db.ts` odmítne pracovat s databází, jejíž název nekončí na `_test`. Prohlížeč pro Playwright: `npx playwright install chromium` (pokud ho nemáte).
@@ -77,10 +80,10 @@ Testy používají `.env.test` (testovací DB `obalbook_test`, žádná tajemstv
 
 1. **Supabase:** vytvořte projekt v regionu EU (např. *Central EU – Frankfurt*). V *Project Settings → Database → Connection string* zkopírujte:
    - **Transaction pooler** (port 6543) → `DATABASE_URL`, doplňte `?pgbouncer=true&connection_limit=1`
-   - **Direct connection** / session pooler (port 5432) → `DIRECT_URL` (používá se pro migrace)
+   - **Session pooler** (port 5432) → `DIRECT_URL` (používá se pro migrace; „Direct connection“ je jen přes IPv6 a z buildu na Vercelu nefunguje)
    (Alternativa: Neon v regionu EU – `DATABASE_URL` = pooled, `DIRECT_URL` = direct.)
 2. **E-maily:** účet u [Resend](https://resend.com) s ověřenou doménou → `RESEND_API_KEY` a `EMAIL_FROM` (např. `ObalBook <noreply@vase-domena.cz>`). Nebo libovolný SMTP → `SMTP_URL`. V produkci bez e-mailové služby aplikace odmítne posílat přihlašovací odkazy.
-3. **Vercel:** importujte repozitář, *Framework: Next.js*. Build command nechte výchozí – Vercel použije skript `vercel-build` (`prisma generate && prisma migrate deploy && next build`, migrace běží proti `DIRECT_URL`).
+3. **Vercel:** importujte repozitář, *Framework: Next.js*. Build command nechte výchozí – Vercel použije skript `vercel-build` (`prisma generate && prisma migrate deploy && next build`, migrace běží proti `DIRECT_URL`). **Preview nasazení** mají mít vlastní (testovací) databázi v proměnných pro prostředí *Preview* – jinak by build migroval produkční DB.
 4. **Proměnné prostředí na Vercelu** (Production):
 
    | Proměnná | Hodnota |
@@ -94,7 +97,7 @@ Testy používají `.env.test` (testovací DB `obalbook_test`, žádná tajemstv
 
    Region funkcí na Vercelu nastavte do EU (*Settings → Functions → Region*, např. `fra1`), ať jsou data i výpočty v EU.
 5. **Upozornění:** `vercel.json` spouští `/api/cron/notifications` jednou denně; Vercel posílá `Authorization: Bearer $CRON_SECRET`.
-6. **Ukázková data v produkci nespouštějte.** Pro demo prostředí: `DATABASE_URL=… DIRECT_URL=… npm run db:seed` z lokálního počítače.
+6. **Ukázková data v produkci nespouštějte.** Pro demo prostředí: `DATABASE_URL=… DIRECT_URL=… npm run db:seed` z lokálního počítače (seed nikdy neposílá e-maily; s `NODE_ENV=production` vyžaduje `SEED_ALLOW=1`).
 
 ## Struktura
 

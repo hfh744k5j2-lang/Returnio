@@ -21,7 +21,7 @@ export default async function PpwrPage({ searchParams }: { searchParams: Promise
   const valid = !Number.isNaN(from.d.getTime()) && !Number.isNaN(to.d.getTime()) && from.d <= to.d;
   const num = (v?: string) => {
     const n = Number(String(v ?? "").replace(",", "."));
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    return Number.isFinite(n) && n > 0 && n <= 1e9 ? n : 0;
   };
   const extra = { pieces: Math.floor(num(sp.extraPieces)), kg: num(sp.extraKg) };
   const r = valid ? await ppwrReport(ctx, from.d, to.d, extra) : null;

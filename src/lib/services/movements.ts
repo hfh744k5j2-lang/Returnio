@@ -264,6 +264,9 @@ export async function sendPartnerLink(movementId: string) {
   });
   if (m.partnership.companyBId) return null;
   const open = m.corrections[0];
+  // odkaz jen když je partner na tahu (navržený pohyb firmy A, nebo rozpor s návrhem firmy A)
+  const partnerTurn = (m.status === "PROPOSED" && m.createdBySide === "A") || (m.status === "DISPUTED" && open?.proposedBySide === "A");
+  if (!partnerTurn) return null;
   const proposed = new Map(((open?.lines ?? []) as { packagingTypeId: string; quantity: number }[]).map((l) => [l.packagingTypeId, l.quantity]));
   const { token, hash } = newToken();
   // u jednoho pohybu platí vždy jen nejnovější odkaz
