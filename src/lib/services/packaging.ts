@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { audit } from "../audit";
 import type { Ctx } from "../context";
@@ -26,7 +27,28 @@ export const packagingSchema = z.object({
   currency: z.enum(["CZK", "EUR"]).default("CZK"),
   reusable: z.preprocess((v) => (v === undefined ? true : v === true || v === "true" || v === "on" || v === "1"), z.boolean()),
   active: z.preprocess((v) => (v === undefined ? true : v === true || v === "true" || v === "on"), z.boolean()).optional(),
+  sharedWithPartners: z.preprocess((v) => v === true || v === "true" || v === "on" || v === "1", z.boolean()).optional(),
 });
+
+/**
+ * Které typy obalů smí firma `companyId` vidět a zapisovat v partnerství `p`:
+ * vlastní typy + typy druhé strany, které vlastník nabízí všem partnerům, nebo které už v tomto
+ * partnerství byly použity. Celý katalog druhé firmy (obaly pro jiné partnery, kauce) se neukazuje.
+ */
+export function usableTypesWhere(
+  p: { id: string; companyAId: string; companyBId: string | null },
+  companyId: string,
+): Prisma.PackagingTypeWhereInput {
+  const other = p.companyAId === companyId ? p.companyBId : p.companyAId;
+  return {
+    OR: [
+      { companyId },
+      ...(other
+        ? [{ companyId: other, OR: [{ sharedWithPartners: true }, { lines: { some: { movement: { partnershipId: p.id } } } }] }]
+        : []),
+    ],
+  };
+}
 
 export async function listPackagingTypes(ctx: Ctx, opts: { includeInactive?: boolean } = {}) {
   return prisma.packagingType.findMany({
@@ -47,12 +69,13 @@ export async function getPackagingType(ctx: Ctx, id: string) {
  */
 export async function listTypesForPartnership(ctx: Ctx, partnershipId: string) {
   const p = await getPartnershipRaw(ctx, partnershipId);
-  const companyIds = [p.companyAId, p.companyBId].filter((x): x is string => Boolean(x));
   return prisma.packagingType.findMany({
     // aktivní typy + neaktivní, které už v tomto partnerství byly (aby šly vrátit)
     where: {
-      companyId: { in: companyIds },
-      OR: [{ active: true }, { lines: { some: { movement: { partnershipId: p.id } } } }],
+      AND: [
+        usableTypesWhere(p, ctx.companyId),
+        { OR: [{ active: true }, { lines: { some: { movement: { partnershipId: p.id } } } }] },
+      ],
     },
     include: { company: { select: { id: true, name: true } } },
     orderBy: [{ companyId: "asc" }, { code: "asc" }],
@@ -66,7 +89,7 @@ export async function createPackagingType(ctx: Ctx, input: unknown) {
   if (clash) throw conflict(`Kód ${data.code} už používáte.`);
   return prisma.$transaction(async (tx) => {
     const t = await tx.packagingType.create({
-      data: { ...data, active: data.active ?? true, companyId: ctx.companyId },
+      data: { ...data, active: data.active ?? true, sharedWithPartners: data.sharedWithPartners ?? false, companyId: ctx.companyId },
     });
     await audit(tx, {
       actor: { userId: ctx.userId },
@@ -93,6 +116,7 @@ export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) 
     currency: before.currency,
     reusable: before.reusable,
     active: before.active,
+    sharedWithPartners: before.sharedWithPartners,
   };
   // null = smazat hodnotu (kauce, materiál), undefined = beze změny
   const merged: Record<string, unknown> = { ...current };
@@ -111,7 +135,13 @@ export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) 
   return prisma.$transaction(async (tx) => {
     const t = await tx.packagingType.update({
       where: { id: before.id },
-      data: { ...data, material: data.material ?? null, active: data.active ?? before.active, deposit: data.deposit ?? null },
+      data: {
+        ...data,
+        material: data.material ?? null,
+        active: data.active ?? before.active,
+        sharedWithPartners: data.sharedWithPartners ?? before.sharedWithPartners,
+        deposit: data.deposit ?? null,
+      },
     });
     await audit(tx, {
       actor: { userId: ctx.userId },
@@ -129,6 +159,7 @@ export async function updatePackagingType(ctx: Ctx, id: string, input: unknown) 
           currency: before.currency,
           reusable: before.reusable,
           active: before.active,
+          sharedWithPartners: before.sharedWithPartners,
         },
         after: { ...data },
       },

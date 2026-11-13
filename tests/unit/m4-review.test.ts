@@ -54,6 +54,8 @@ describe("revize M4", () => {
 
   it("vyřazený typ nejde vydat, ale jde vrátit; počet true se nepřijme", async () => {
     const old = await packaging.createPackagingType(A, { name: "Stará", code: "OLD2", weightKg: 5 });
+    // obal byl partnerovi dřív vydán (jinak by ho partner neviděl – viz katalog obalů druhé strany)
+    await mv.createMovement(A, { partnershipId: pAB, kind: "ISSUE", date: today(), lines: [{ packagingTypeId: old.id, quantity: 1 }] });
     await packaging.updatePackagingType(A, old.id, { active: false });
     await expect(mv.createMovement(A, { partnershipId: pAB, kind: "ISSUE", date: today(), lines: [{ packagingTypeId: old.id, quantity: 1 }] })).rejects.toThrow(/vyřazený/);
     await mv.createMovement(B, { partnershipId: pAB, kind: "RETURN", direction: "OUT", date: today(), lines: [{ packagingTypeId: old.id, quantity: 1 }] });

@@ -92,7 +92,9 @@ export async function inviteUser(ctx: Ctx, input: unknown) {
   const data = parse(inviteSchema, input);
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing?.companyId === ctx.companyId) throw conflict("Uživatel už je členem firmy.");
-  if (existing?.companyId) throw conflict("Tento e-mail nelze pozvat. Požádejte kolegu, ať použije jiný pracovní e-mail.");
+  // E-mail registrovaný u jiné firmy: odpověď je stejná jako u nového e-mailu, aby pozvánka
+  // neprozrazovala, které e-maily (a tedy firmy) v ObalBooku jsou. Přijmout ji ale nepůjde
+  // (acceptInvitation: „Už patříte k jiné firmě“) – adresát se to dozví v e-mailu a na stránce pozvánky.
   const { token, hash } = newToken();
   const company = await getCompany(ctx);
   const inv = await prisma.$transaction(async (tx) => {
@@ -128,7 +130,9 @@ export async function inviteUser(ctx: Ctx, input: unknown) {
     text:
       `Firma ${company.name} vás zve do ObalBook (evidence vratných obalů).\n` +
       `Pozvánku přijmete zde (platí 7 dní):\n${url}\n\n` +
-      `${company.name} invites you to ObalBook. Accept here (valid 7 days):\n${url}`,
+      `Pokud už v ObalBooku máte účet u jiné firmy, pozvánku přijmout nepůjde – použijte jiný pracovní e-mail.\n\n` +
+      `${company.name} invites you to ObalBook. Accept here (valid 7 days):\n${url}\n` +
+      `If you already have an ObalBook account with another company, use a different work e-mail.`,
   });
   return { invitation: inv, url };
 }

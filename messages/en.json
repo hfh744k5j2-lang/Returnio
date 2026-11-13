@@ -73,7 +73,8 @@
     "text": "{company} invites you to ObalBook with the role {role}.",
     "signInFirst": "Sign in as {email}",
     "wrongEmail": "This invitation is for {email}. Sign out and sign in with that email.",
-    "accept": "Accept invitation"
+    "accept": "Accept invitation",
+    "otherCompany": "Your account already belongs to another company, so this invitation can't be accepted. Ask for an invitation to a different work e-mail."
   },
   "partnerInvite": {
     "title": "Invitation from a business partner",
@@ -222,7 +223,10 @@
     "addSubmit": "Add",
     "added": "Packaging type added.",
     "editTitle": "Edit packaging {code}",
-    "editWarning": "Changes to weight or reusability apply to new movements only. Existing movements keep their original values."
+    "editWarning": "Changes to weight or reusability apply to new movements only. Existing movements keep their original values.",
+    "shared": "Offer to all partners",
+    "sharedHelp": "Otherwise a partner sees it and can record it only after the first movement with this packaging. Partners don't see your other packaging (or its deposits).",
+    "sharedBadge": "Offered to partners"
   },
   "labels": {
     "print": "Print label",

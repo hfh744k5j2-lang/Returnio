@@ -73,7 +73,8 @@
     "text": "Firma {company} vás zve do ObalBook s rolí {role}.",
     "signInFirst": "Přihlásit se jako {email}",
     "wrongEmail": "Pozvánka je pro {email}. Odhlaste se a přihlaste se tímto e-mailem.",
-    "accept": "Přijmout pozvánku"
+    "accept": "Přijmout pozvánku",
+    "otherCompany": "Váš účet už patří k jiné firmě, proto pozvánku nelze přijmout. Požádejte o pozvánku na jiný pracovní e-mail."
   },
   "partnerInvite": {
     "title": "Pozvánka od obchodního partnera",
@@ -222,7 +223,10 @@
     "addSubmit": "Přidat",
     "added": "Typ obalu přidán.",
     "editTitle": "Upravit obal {code}",
-    "editWarning": "Změna hmotnosti nebo vratnosti platí jen pro nové pohyby. Už zapsané pohyby si drží původní hodnoty."
+    "editWarning": "Změna hmotnosti nebo vratnosti platí jen pro nové pohyby. Už zapsané pohyby si drží původní hodnoty.",
+    "shared": "Nabízet všem partnerům",
+    "sharedHelp": "Jinak ho partner uvidí a může zapsat až po prvním pohybu s tímto obalem. Ostatní vaše obaly (a jejich kauce) partneři nevidí.",
+    "sharedBadge": "Nabízeno partnerům"
   },
   "labels": {
     "print": "Tisk štítku",

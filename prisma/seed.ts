@@ -2,9 +2,9 @@
  * Ukázková data ObalBook (všechny firmy, osoby a adresy jsou SMYŠLENÉ).
  * 3 firmy, 5 typů obalů, 300 pohybů za posledních 6 měsíců včetně rozporů.
  *
- * Spuštění: npm run db:seed   (data se zapisují přes stejné služby jako v aplikaci, takže vzniká i auditní stopa)
+ * Spuštění: npm run db:seed (načte .env)   (data se zapisují přes stejné služby jako v aplikaci, takže vzniká i auditní stopa)
  */
-import type { MovementKind } from "@prisma/client";
+import type { MovementKind, Prisma } from "@prisma/client";
 import { prisma } from "../src/lib/db";
 import type { Ctx } from "../src/lib/context";
 import * as partners from "../src/lib/services/partners";
@@ -18,6 +18,17 @@ export const SEED_USERS = {
   hurtownia: { admin: "admin@wisla-hurt.example", logistik: "logistyka@wisla-hurt.example", sklad: "magazyn@wisla-hurt.example" },
 } as const;
 export const SEED_UNREGISTERED = "objednavky@ulipy.example";
+
+/**
+ * Posun času auditních záznamů do minulosti (realistická historie ukázkových dat).
+ * AuditLog je v DB append-only (trigger); seed smí měnit jen createdAt a jen s SET LOCAL obalbook.audit_backdate.
+ */
+async function backdateAudit(where: Prisma.AuditLogWhereInput, createdAt: Date) {
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('obalbook.audit_backdate', 'on', true)`;
+    await tx.auditLog.updateMany({ where, data: { createdAt } });
+  });
+}
 
 /** Deterministický generátor (stejná data při každém spuštění). */
 function rng(seed: number) {
@@ -89,7 +100,7 @@ async function seedInner(total: number, now: Date) {
   const box = await packaging.createPackagingType(piv.logistik, { name: "Přepravka 20 × 0,5 l", code: "BOX20", material: "plast", weightKg: 1.8, deposit: 100, currency: "CZK", reusable: true });
   const keg = await packaging.createPackagingType(piv.logistik, { name: "Sud KEG 50 l", code: "KEG50", material: "nerez ocel", weightKg: 12.5, deposit: 1500, currency: "CZK", reusable: true });
   const krt = await packaging.createPackagingType(piv.logistik, { name: "Karton 6 × 0,5 l (nevratný)", code: "KRT6", material: "karton", weightKg: 0.3, reusable: false });
-  const h1 = await packaging.createPackagingType(vel.logistik, { name: "Plastová paleta H1", code: "H1", material: "plast", weightKg: 18, deposit: 25, currency: "EUR", reusable: true });
+  const h1 = await packaging.createPackagingType(vel.logistik, { name: "Plastová paleta H1", code: "H1", material: "plast", weightKg: 18, deposit: 25, currency: "EUR", reusable: true, sharedWithPartners: true }); // poolová paleta – nabízená všem partnerům
 
   // partnerství: pivovar ↔ velkoobchod, pivovar ↔ hurtownia, velkoobchod ↔ hurtownia, + neregistrovaná restaurace
   async function connect(a: Ctx, b: Ctx, name: string, code: string) {
@@ -206,7 +217,7 @@ async function seedInner(total: number, now: Date) {
     await prisma.movement.update({ where: { id: m.id }, data: { createdAt } });
 
     if (!other) {
-      await prisma.auditLog.updateMany({ where: { entityId: m.id }, data: { createdAt } });
+      await backdateAudit({ entityId: m.id }, createdAt);
       // neregistrovaný partner: starší pohyby potvrzené přes odkaz, nejnovější čekají
       if (age > 10) {
         const link = await prisma.partnerLinkToken.findFirst({ where: { movementId: m.id } });
@@ -263,13 +274,13 @@ async function seedInner(total: number, now: Date) {
     }
     // časy potvrzení a auditu posunout k datu pohybu (realistická historie)
     // realistická chronologie: vznik → další kroky po hodinách, nikdy v budoucnosti
-    await prisma.auditLog.updateMany({ where: { entityId: m.id, action: "movement.created" }, data: { createdAt } });
+    await backdateAudit({ entityId: m.id, action: "movement.created" }, createdAt);
     const steps = await prisma.auditLog.findMany({ where: { entityId: m.id, action: { not: "movement.created" } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
     let tick = createdAt.getTime();
     for (const st of steps) {
       tick += between(2, 20) * 3600 * 1000;
       const at = cap(new Date(tick));
-      await prisma.auditLog.update({ where: { id: st.id }, data: { createdAt: at } });
+      await backdateAudit({ id: st.id }, at);
       if (st.action === "movement.disputed" || st.action === "movement.counter_proposed") {
         const cid = (st.data as { correctionId?: string } | null)?.correctionId;
         if (cid) await prisma.movementCorrection.update({ where: { id: cid }, data: { createdAt: at } });

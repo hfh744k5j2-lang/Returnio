@@ -36,7 +36,7 @@ export default async function PackagingPage() {
                 {types.map((p) => (
                   <tr key={p.id} className={p.active ? "" : "opacity-50"}>
                     <td className="font-mono">{p.code}</td>
-                    <td>{p.name}{!p.active && <span className="muted"> ({t("packaging.inactive")})</span>}</td>
+                    <td>{p.name}{!p.active && <span className="muted"> ({t("packaging.inactive")})</span>}{p.sharedWithPartners && <span className="muted"> · {t("packaging.sharedBadge")}</span>}</td>
                     <td>{p.material ?? "–"}</td>
                     <td className="text-right tabular-nums">{formatNumber(Number(p.weightKg), locale, 1)}</td>
                     <td className="text-right tabular-nums">{p.deposit ? `${formatNumber(Number(p.deposit), locale, 2)} ${p.currency === "CZK" ? "Kč" : "EUR"}` : "–"}</td>

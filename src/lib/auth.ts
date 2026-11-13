@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
 import { sendEmail } from "./email";
 import { appUrl } from "./tokens";
+import { LIMITS, hit } from "./rate-limit";
 
 export function rebaseToAppUrl(raw: string): string {
   const u = new URL(raw);
@@ -20,6 +21,12 @@ const emailProvider: EmailConfig = {
   async sendVerificationRequest({ identifier, url: rawUrl }) {
     // Odkaz vždy na APP_URL – nikdy podle hlavičky Host/X-Forwarded-Host požadavku (ochrana proti podvržení).
     const url = rebaseToAppUrl(rawUrl);
+    // pojistka i pro přímé volání Auth.js mimo formulář: nad limit se e-mail tiše neodešle
+    const { limit, windowSec } = LIMITS.magicLinkSendPerEmail;
+    if (!(await hit(`ml-send:${identifier.toLowerCase()}`, limit, windowSec))) {
+      console.warn("Magic link: překročen limit odeslání, e-mail neodeslán.");
+      return;
+    }
     await sendEmail({
       to: identifier,
       subject: "Přihlášení do ObalBook / Sign in to ObalBook",

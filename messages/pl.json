@@ -73,7 +73,8 @@
     "text": "Firma {company} zaprasza Cię do ObalBook z rolą {role}.",
     "signInFirst": "Zaloguj się jako {email}",
     "wrongEmail": "Zaproszenie jest dla {email}. Wyloguj się i zaloguj tym adresem.",
-    "accept": "Przyjmij zaproszenie"
+    "accept": "Przyjmij zaproszenie",
+    "otherCompany": "Twoje konto należy już do innej firmy, więc nie można przyjąć zaproszenia. Poproś o zaproszenie na inny służbowy e-mail."
   },
   "partnerInvite": {
     "title": "Zaproszenie od partnera handlowego",
@@ -222,7 +223,10 @@
     "addSubmit": "Dodaj",
     "added": "Rodzaj opakowania dodany.",
     "editTitle": "Edytuj opakowanie {code}",
-    "editWarning": "Zmiana wagi lub zwrotności dotyczy tylko nowych ruchów. Zapisane ruchy zachowują pierwotne wartości."
+    "editWarning": "Zmiana wagi lub zwrotności dotyczy tylko nowych ruchów. Zapisane ruchy zachowują pierwotne wartości.",
+    "shared": "Udostępnij wszystkim partnerom",
+    "sharedHelp": "W przeciwnym razie partner zobaczy je i może je zapisać dopiero po pierwszym ruchu z tym opakowaniem. Pozostałych opakowań (ani kaucji) partnerzy nie widzą.",
+    "sharedBadge": "Udostępnione partnerom"
   },
   "labels": {
     "print": "Drukuj etykietę",

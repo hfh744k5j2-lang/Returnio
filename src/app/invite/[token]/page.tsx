@@ -36,6 +36,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
               <Link className="btn-primary w-full" href={`/login?next=/invite/${token}`}>{t("invite.signInFirst", { email: inv.email })}</Link>
             ) : user.email.toLowerCase() !== inv.email.toLowerCase() ? (
               <p className="alert-warn">{t("invite.wrongEmail", { email: inv.email })}</p>
+            ) : user.companyId && user.companyId !== inv.companyId ? (
+              <p className="alert-warn">{t("invite.otherCompany")}</p>
             ) : (
               <ActionForm action={accept}>
                 <button className="btn-primary w-full">{t("invite.accept")}</button>

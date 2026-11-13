@@ -21,7 +21,8 @@ beforeAll(async () => {
   pAB = (await prisma.partnership.findFirstOrThrow({ where: { companyAId: A.companyId, companyBId: B.companyId } })).id;
   pAB2 = (await partners.invitePartner(A, { name: "Druhý", email: "mv-second@example.com" })).partnership.id;
   tA = (await packaging.createPackagingType(A, { name: "EUR paleta", code: "EUR", weightKg: 25, reusable: true })).id;
-  tB = (await packaging.createPackagingType(B, { name: "Přepravka", code: "BOX", weightKg: 2, reusable: true })).id;
+  // B přepravky nabízí partnerům – A je smí zapsat dřív, než je B poprvé použije
+  tB = (await packaging.createPackagingType(B, { name: "Přepravka", code: "BOX", weightKg: 2, reusable: true, sharedWithPartners: true })).id;
 });
 
 describe("pohyby – číslování a snímek", () => {

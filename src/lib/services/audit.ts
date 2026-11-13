@@ -21,7 +21,8 @@ export async function movementHistory(ctx: Ctx, movementId: string) {
 }
 
 async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string; page?: number; pageSize?: number }) {
-  const partnerships = await prisma.partnership.findMany({ where: partnershipScope(ctx.companyId), select: { id: true } });
+  const partnerships = await prisma.partnership.findMany({ where: partnershipScope(ctx.companyId), select: { id: true, companyAId: true, companyBId: true } });
+  const parties = new Map(partnerships.map((p) => [p.id, [p.companyAId, p.companyBId]]));
   const where: Prisma.AuditLogWhereInput = {
     AND: [
       { OR: [{ companyId: ctx.companyId }, { partnershipId: { in: partnerships.map((p) => p.id) } }] },
@@ -35,7 +36,10 @@ async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string;
     prisma.auditLog.count({ where }),
     prisma.auditLog.findMany({
       where,
-      include: { user: { select: { email: true, companyId: true, company: { select: { name: true } } } } },
+      include: {
+        user: { select: { email: true } },
+        actorCompany: { select: { id: true, name: true } },
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -52,14 +56,30 @@ async function queryAudit(ctx: Ctx, f: { entityType?: string; entityId?: string;
       entityType: a.entityType,
       entityId: a.entityId,
       data: a.data,
-      // uživatele z partnerské firmy ukazujeme jen e-mailem; neregistrovaného partnera jeho jménem
-      // e-maily zaměstnanců partnera nezobrazujeme – jen název jejich firmy
-      actor: a.user
-        ? a.user.companyId === ctx.companyId
-          ? a.user.email
-          : (a.user.company?.name ?? "partner")
-        : (a.actorLabel ?? "systém"),
-      ownCompany: a.user?.companyId === ctx.companyId,
+      actor: actorLabel(a, ctx.companyId, a.partnershipId ? (parties.get(a.partnershipId) ?? []) : []),
+      ownCompany: Boolean(a.userId) && a.actorCompanyId === ctx.companyId,
     })),
   };
+}
+
+/**
+ * Kdo akci provedl – podle snímku firmy v okamžiku zápisu (ne podle aktuální firmy uživatele).
+ * Vlastní kolegy ukazujeme e-mailem, zaměstnance partnera jen názvem jeho firmy, neregistrovaného
+ * partnera jménem z odkazu. Název firmy, která není stranou partnerství, se nikdy neukáže.
+ */
+function actorLabel(
+  a: {
+    userId: string | null;
+    actorLabel: string | null;
+    actorCompanyId: string | null;
+    user: { email: string } | null;
+    actorCompany: { id: string; name: string } | null;
+  },
+  companyId: string,
+  partySides: (string | null)[],
+): string {
+  if (!a.userId) return a.actorLabel ?? "systém";
+  if (a.actorCompanyId === companyId) return a.user?.email ?? "kolega";
+  if (a.actorCompany && partySides.includes(a.actorCompany.id)) return a.actorCompany.name;
+  return "partner";
 }

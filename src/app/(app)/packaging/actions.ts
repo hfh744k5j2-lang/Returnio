@@ -13,6 +13,7 @@ function fields(fd: FormData) {
     material: o.material ?? null, // prázdné pole = smazat
     deposit: o.deposit ?? null,
     reusable: fd.get("reusable") === "on",
+    sharedWithPartners: fd.get("sharedWithPartners") === "on",
     active: fd.has("activePresent") ? fd.get("active") === "on" : undefined,
   };
 }

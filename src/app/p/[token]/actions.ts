@@ -3,6 +3,8 @@ import { runAction, type ActionState } from "@/lib/actions";
 import { invalid } from "@/lib/errors";
 import { getT } from "@/lib/i18n/server";
 import { actOnPartnerLink } from "@/lib/services/movements";
+import { hashToken } from "@/lib/tokens";
+import { LIMITS, clientIp, enforce } from "@/lib/rate-limit";
 
 function payload(fd: FormData) {
   try {
@@ -16,6 +18,9 @@ async function run(fd: FormData, action: "confirm" | "dispute" | "accept" | "cou
   const { t } = await getT();
   return runAction(async () => {
     const token = String(fd.get("token") ?? "");
+    // veřejná stránka bez přihlášení: limit na IP i na odkaz
+    await enforce(`pl:ip:${await clientIp()}`, LIMITS.partnerLinkPerIp.limit, LIMITS.partnerLinkPerIp.windowSec);
+    await enforce(`pl:token:${hashToken(token)}`, LIMITS.partnerLinkPerToken.limit, LIMITS.partnerLinkPerToken.windowSec);
     const name = String(fd.get("name") ?? "");
     const body = action === "dispute" || action === "counter" ? payload(fd) : {};
     await actOnPartnerLink(token, action, { name, ...body });

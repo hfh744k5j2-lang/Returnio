@@ -9,6 +9,7 @@ type Defaults = {
   currency?: string;
   reusable?: boolean;
   active?: boolean;
+  sharedWithPartners?: boolean;
 };
 
 export function PackagingFields({ t, d, showActive }: { t: TFn; d?: Defaults; showActive?: boolean }) {
@@ -48,6 +49,9 @@ export function PackagingFields({ t, d, showActive }: { t: TFn; d?: Defaults; sh
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="reusable" defaultChecked={d?.reusable ?? true} className="h-5 w-5" /> {t("packaging.reusable")}
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="sharedWithPartners" defaultChecked={d?.sharedWithPartners ?? false} className="h-5 w-5" /> {t("packaging.shared")}
+        </label>
         {showActive && (
           <label className="flex items-center gap-2 text-sm">
             <input type="hidden" name="activePresent" value="1" />
@@ -55,6 +59,7 @@ export function PackagingFields({ t, d, showActive }: { t: TFn; d?: Defaults; sh
           </label>
         )}
       </div>
+      <p className="muted text-sm sm:col-span-2 lg:col-span-4">{t("packaging.sharedHelp")}</p>
     </div>
   );
 }

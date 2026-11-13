@@ -9,6 +9,7 @@ import { appUrl, hashToken, newToken } from "../tokens";
 import { sendEmail } from "../email";
 import { parse } from "./validate";
 import { getPartnershipRaw, notifyEmailsForSide, otherSide, partnershipScope, sideOf } from "./partners";
+import { usableTypesWhere } from "./packaging";
 
 export const MOVEMENT_KINDS: MovementKind[] = ["ISSUE", "RECEIPT", "RETURN", "LOSS", "DAMAGE", "CORRECTION"];
 /** Druhy, které smí zapsat i skladník. */
@@ -132,11 +133,10 @@ export async function createMovement(ctx: Ctx, input: unknown, opts: { importBat
   const direction = fixed ?? data.direction;
   if (!direction) throw invalid("Zvolte směr pohybu.");
 
-  // Typy obalů musí patřit jedné ze stran partnerství (žádné cizí ID).
-  const companyIds = [p.companyAId, p.companyBId].filter((x): x is string => Boolean(x));
+  // Typy obalů: vlastní, nebo typ partnera, který je nabízený / už v partnerství použitý (žádné cizí ID).
   const types = await db.packagingType.findMany({
     // i neaktivní typ – jinak by nešlo vrátit obaly, které u partnera zůstaly
-    where: { id: { in: data.lines.map((l) => l.packagingTypeId) }, companyId: { in: companyIds } },
+    where: { AND: [{ id: { in: data.lines.map((l) => l.packagingTypeId) } }, usableTypesWhere(p, ctx.companyId)] },
   });
   if (types.length !== data.lines.length) throw invalid("Neznámý typ obalu.");
   // deaktivovaný typ už nevydáváme; vrátit / odepsat ho jde (aby saldo šlo uzavřít)

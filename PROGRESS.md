@@ -18,11 +18,11 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 ## Technický dluh
 
 - Chybové hlášky ze služeb (validace) jsou česky i v anglickém UI.
-- Magic link nemá rate limit a nemá mezikrok proti skenerům odkazů v poště (Outlook Safe Links).
+- Magic link nemá mezikrok proti skenerům odkazů v poště (Outlook Safe Links). (Rate limit doplněn po revizi.)
 - Název a IČO firmy se neověřují (kdokoli může založit firmu s cizím názvem) – v pozvánce se aspoň zobrazuje IČO.
 - Kontrola „firma má aspoň jednoho admina“ neběží se zámkem (teoretický souběh dvou adminů).
 - Registrace firmy z pozvánky partnera a přijetí nejsou v jedné transakci (pozvánka se ale ověří předem).
-- AuditLog je append-only jen aplikačně (nejsou odebrána DB práva UPDATE/DELETE).
+- AuditLog: trigger blokuje UPDATE/DELETE, ale aplikace se k DB připojuje vlastníkem schématu (ten může trigger odstranit). Pro silnější záruku oddělená DB role bez práva ALTER/DELETE – mimo MVP.
 - Pozvánky (kolega, partner) – když selže odeslání e-mailu, uživatel vidí chybu, i když záznam vznikl; partnerovi lze pozvánku poslat znovu z detailu.
 
 ---
@@ -181,7 +181,26 @@ Záznam postupu podle CLAUDE.md. Ke každému milníku: co je hotové, co se tes
 
 ## Hotovo (sekce 8 zadání)
 
-- [x] `npm run check` a všechny Playwright testy projdou (82 unit + 19 e2e, desktop i mobil).
+- [x] `npm run check` a všechny Playwright testy projdou (95 unit + 21 e2e, desktop i mobil; stav po revizi).
 - [x] Ze seed dat jde přihlásit jako každá ze 3 firem a projít výdej → potvrzení → rozpor → vyřešení → saldo → výkaz PPWR → export CSV (`tests/e2e/m7-seed-flow.spec.ts`, video `docs/video/hlavni-tok.webm`).
 - [x] README popisuje lokální spuštění a nasazení (Vercel + Supabase EU).
 - [x] PROGRESS.md obsahuje záznam kontroly (check, Playwright, revize sub-agentem, opravy, dluh) ke každému milníku M1–M7.
+
+---
+
+## Revize po M7 (nezávislá kontrola „Hotovo znamená“) – opraveno
+
+**Jak se kontrolovalo:** `npm run check` + Playwright, vlastní sonda oddělení dat proti běžící aplikaci (5 uživatelů ze 3 ukázkových firem, nesouvisející firma i skladník; všechny `/api/v1/*` a stránky s cizími ID, filtry, vyhledávání, audit, exporty; ověření, že DB zůstala beze změny), seed na prázdné DB podle README, zrcadlovost salda u všech partnerství. API ani stránky nic cizího neukázaly; nalezené problémy:
+
+1. **VYSOKÁ – únik názvu cizí firmy v auditní stopě.** Autor akce se zobrazoval podle *aktuální* firmy uživatele. Když zaměstnanec partnera přešel k nesouvisející firmě, partner v historii viděl její název a historie tvrdila, že pohyb potvrdila firma, která v partnerství není. **Oprava:** `AuditLog.actorCompanyId` – snímek firmy při zápisu (`src/lib/audit.ts`), zobrazení jen podle snímku a jen pokud je ta firma stranou partnerství (jinak „partner“). Migrace dopočítá snímek ze `companyId` záznamu (u akcí uživatele = firma, za kterou jednal). Test v `isolation-review.test.ts`.
+2. **VYSOKÁ – `npm run db:seed` a `npm run notify` na čisté instalaci padaly** (`tsx` nenačte `.env`, chyba `DATABASE_URL not found`); e2e to nezachytily, protože volají `seed()` přímo. **Oprava:** `scripts/load-env.ts` (`process.loadEnvFile`, proměnné z prostředí mají přednost, chybějící `.env` nevadí) přes `tsx --import`. Ověřeno: prázdná DB → `npm run db:migrate` → `npm run db:seed` (3 firmy, 5 typů, 300 pohybů) → `npm run notify`.
+3. **NÍZKÁ – partner viděl celý katalog obalů druhé firmy** (i obaly pro jiné partnery a jejich kauce). **Oprava:** `usableTypesWhere()` v `services/packaging.ts` – druhá strana vidí a smí zapsat jen typy, které vlastník nabízí všem partnerům (nové pole `PackagingType.sharedWithPartners`, zaškrtávátko „Nabízet všem partnerům“, výchozí ne), nebo které už v partnerství byly použity. Stejné pravidlo ve výpisu, zápisu pohybu i CSV importu. Seed: paleta H1 je nabízená (poolová paleta).
+4. **NÍZKÁ – dluh před nasazením:**
+   - **Rate limit** (`src/lib/rate-limit.ts`, tabulka `RateLimit`, pevné okno v DB – funguje napříč instancemi Vercelu): magic link 5×/15 min na e-mail a 20×/15 min na IP ve formuláři + pojistka 6×/15 min přímo při odeslání (i pro přímé volání Auth.js); veřejné akce `/p/[token]` 30×/10 min na IP a 10×/10 min na odkaz (HTTP 429 / srozumitelná hláška).
+   - **AuditLog append-only v DB:** trigger zakáže DELETE vždy a UPDATE také; jediná výjimka je seed, který smí v transakci s `SET LOCAL obalbook.audit_backdate = 'on'` posunout jen `createdAt`.
+   - **Pozvánka kolegy neprozrazuje registrované e-maily:** e-mail jiné firmy dostane stejnou odpověď jako nový; přijmout pozvánku nejde a stránka pozvánky to rovnou vysvětlí.
+5. **KOSMETICKÁ** – varování Vite o dynamickém importu v registru pokrytí testů (cesta s příponou `.ts`).
+
+**Rozhodnutí:** obal partnera, který nebyl nabídnut ani použit, nejde zapsat jako první druhou stranou – první pohyb zapíše vlastník (běžně výdej), počáteční stav se zapíše úpravou salda, nebo vlastník typ nabídne všem partnerům. Jednodušší než schvalování typů po partnerech; chrání obchodní informace (kauce, sortiment pro jiné odběratele).
+
+**Testováno:** `npm run check` OK (95 unit testů, nový `isolation-review.test.ts`: snímek autora a přechod zaměstnance k cizí firmě, trigger, katalog obalů včetně importu, rate limit včetně souběhu, pozvánka na e-mail jiné firmy). Playwright 21/21 OK (nový `review-fixes.spec.ts`: limit přihlašovacích odkazů, nabízený vs. interní obal v UI a API partnera).

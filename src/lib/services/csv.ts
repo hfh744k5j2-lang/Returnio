@@ -236,6 +236,16 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
     if (p.companyBId) companyIds.add(p.companyBId);
   }
   const types = await prisma.packagingType.findMany({ where: { companyId: { in: [...companyIds] } } });
+  // typ partnera jen nabízený nebo už v daném partnerství použitý (stejné pravidlo jako ruční zápis)
+  const usedPairs = new Set(
+    (
+      await prisma.movementLine.findMany({
+        where: { movement: { partnershipId: { in: partnerRecords.map((p) => p.id) } } },
+        select: { packagingTypeId: true, movement: { select: { partnershipId: true } } },
+        distinct: ["packagingTypeId", "movementId"],
+      })
+    ).map((l) => `${l.movement.partnershipId}|${l.packagingTypeId}`),
+  );
   const errors: ImportRowError[] = [];
   const groups = new Map<string, Group>();
   const col = (r: Record<string, string>, f: ImportField) => (mapping[f] ? String(r[mapping[f]!] ?? "").trim() : "");
@@ -264,7 +274,12 @@ async function prepare(ctx: Ctx, text: string, mapping: ImportMapping) {
     // přednost má vlastní typ; jinak typ partnera
     const type =
       types.find((t) => t.code === code && t.companyId === ctx.companyId) ??
-      types.find((t) => t.code === code && allowedCompanies.includes(t.companyId));
+      types.find(
+        (t) =>
+          t.code === code &&
+          allowedCompanies.includes(t.companyId) &&
+          (t.sharedWithPartners || usedPairs.has(`${partnershipId}|${t.id}`)),
+      );
     if (!type) return fail(`Neznámý kód obalu „${col(r, "packaging")}“.`);
     if (kind === "ISSUE" && !type.active) return fail(`Obal „${type.code}“ je vyřazený – nelze ho vydat.`);
     // jen celé číslo bez oddělovače tisíců („1.000“ by jinak mohlo znamenat 1)

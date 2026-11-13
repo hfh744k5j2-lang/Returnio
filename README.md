@@ -12,14 +12,15 @@ Uživatelé: **skladník** (telefon – skenování QR), **logistik** (počíta�
 |---|---|
 | Firmy a uživatelé | registrace firmy magic linkem, pozvání kolegů, role `admin` / `logistik` / `sklad` |
 | Partneři | pozvání e-mailem, partner se zaregistruje zdarma nebo potvrzuje přes jednorázové odkazy |
-| Typy obalů | název, kód, materiál, hmotnost, kauce Kč/EUR, vratný ano/ne, QR štítky |
+| Typy obalů | název, kód, materiál, hmotnost, kauce Kč/EUR, vratný ano/ne, QR štítky; partner vidí jen obaly, které jste s ním už použili nebo které nabízíte všem partnerům |
 | Pohyby | výdej, příjem, vrácení, ztráta, poškození, úprava salda; stav navržen → potvrzen / rozporován; rozpor řeší obě strany dohodou (protinávrhy, schválení) |
 | Saldo | po partnerech a typech, jen z potvrzených pohybů, zvlášť „čeká na potvrzení“, saldo ke dni, hodnota kaucí |
 | Mobil | `/scan`: QR partnera a obalu kamerou telefonu (nebo fotoaparátem – QR jsou běžné URL), počty, uložit |
 | Import / export | CSV import z ERP s mapováním sloupců a kontrolou (vše, nebo nic); export salda, pohybů a výkazu (středník, UTF-8 BOM pro Excel) |
 | Výkaz PPWR | podíl vratných obalů v kusech i kg, obrátky podle typu – **orientační**, celá metodika v `src/lib/ppwr.ts` |
 | Upozornění | nepotvrzený pohyb starší 3 dnů, nový rozpor, saldo nad limitem |
-| Audit | každá změna s uživatelem a časem, nic se nemaže |
+| Audit | každá změna s uživatelem, jeho firmou (snímek v okamžiku zápisu) a časem; nic se nemaže – v DB to hlídá trigger |
+| Ochrana | omezení počtu pokusů u přihlašovacího odkazu a u veřejných odkazů partnerů (tabulka `RateLimit`, limity v `src/lib/rate-limit.ts`) |
 
 Snímky hlavních toků jsou v [`docs/screenshots`](docs/screenshots), video celého toku v [`docs/video/hlavni-tok.webm`](docs/video/hlavni-tok.webm) (generuje Playwright test `tests/e2e/m7-seed-flow.spec.ts`).
 
@@ -60,7 +61,7 @@ npm run dev          # http://localhost:3000
 
 Doporučená prohlídka: přihlaste se jako `sklad@zlatyjecmen.example` → **Nový pohyb** (výdej Moravě) → odhlaste se, přihlaste jako `sklad@moravanapoje.example` → **Přehled → Čeká na vaše potvrzení** → potvrdit nebo „Ne, počty nesouhlasí“ → jako `logistika@zlatyjecmen.example` **Rozpory k vyřešení** → přijmout / navrhnout jiné počty → **Saldo** → **Výkaz PPWR** → **Export (CSV)**.
 
-Upozornění ručně: `npm run notify`.
+Upozornění ručně: `npm run notify`. Skripty `db:seed` a `notify` si samy načtou `.env` (proměnné z prostředí mají přednost).
 
 Další skripty: `npm run db:migrate:dev` (nová migrace při změně schématu), `npm run db:reset` (smaže **všechna** data lokální DB a aplikuje migrace znovu – jen pro vývoj). Testovací DB `obalbook_test` vytvoří Docker Compose jen při prvním vytvoření volume; jinak: `docker compose exec db createdb -U postgres obalbook_test`.
 

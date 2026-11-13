@@ -16,9 +16,15 @@ export async function audit(
     data?: Prisma.InputJsonValue;
   },
 ) {
+  // Snímek firmy, za kterou uživatel jedná TEĎ. Při čtení se nesmí odvozovat z jeho aktuální firmy:
+  // po přechodu k jiné firmě by partner viděl název cizí firmy a historie by lhala.
+  const actorCompanyId = entry.actor.userId
+    ? ((await tx.user.findUnique({ where: { id: entry.actor.userId }, select: { companyId: true } }))?.companyId ?? null)
+    : null;
   await tx.auditLog.create({
     data: {
       userId: entry.actor.userId ?? null,
+      actorCompanyId,
       actorLabel: entry.actor.label ?? null,
       companyId: entry.companyId ?? null,
       partnershipId: entry.partnershipId ?? null,
